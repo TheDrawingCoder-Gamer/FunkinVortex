@@ -1,15 +1,21 @@
 package;
 
+#if !macro
 import flash.display.BitmapData;
 import flixel.FlxSprite;
+import flixel.FlxObject;
 import flixel.graphics.FlxGraphic;
 import flixel.graphics.frames.FlxAtlasFrames;
+import flixel.graphics.frames.FlxTileFrames;
+import flixel.graphics.frames.FlxFramesCollection;
 import flixel.math.FlxMath;
+import flixel.math.FlxPoint;
 import flixel.text.FlxText;
 import flixel.util.FlxColor;
 import flixel.util.typeLimit.OneOfTwo;
 import lime.system.System;
 
+#end
 using StringTools;
 
 #if sys
@@ -29,165 +35,237 @@ enum abstract Direction(Int) from Int to Int
 	var right;
 }
 
+enum NoteKind {
+	Normal;
+	Mine;
+	Lift;
+	Nuke;
+	Custom(id: Int, name: String);
+	// these two are incomplete and can prevent export of songs
+	CustomName(name: String);
+	CustomId(id: Int);
+}
+
+
+
 class Note extends FlxSprite
 {
-	public var strumTime:Float = 0;
+	public var parentState: PlayState;
 
-	public var mustPress:Bool = false;
-	public var noteData:Int = 0;
-	public var canBeHit:Bool = false;
-	public var tooLate:Bool = false;
-	public var wasGoodHit:Bool = false;
-	public var prevNote:Note;
-	public var duoMode:Bool = false;
-	public var oppMode:Bool = false;
-	public var sustainLength:Float = 0;
-	public var isSustainNote:Bool = false;
-	public var modifiedByLua:Bool = false;
-	public var funnyMode:Bool = false;
-	public var noteScore:Float = 1;
-	public var altNote:Bool = false;
-	public var altNum:Int = 0;
-	public var isPixel:Bool = false;
 
 	public static var swagWidth:Float = 160 * 0.7;
-	public static var PURP_NOTE:Int = 0;
-	public static var GREEN_NOTE:Int = 2;
-	public static var BLUE_NOTE:Int = 1;
-	public static var RED_NOTE:Int = 3;
-	public static var NOTE_AMOUNT:Int = 4;
 
-	public var rating = "miss";
-	public var isLiftNote:Bool = false;
-	public var mineNote:Bool = false;
-	public var healMultiplier:Float = 1;
-	public var damageMultiplier:Float = 1;
-	// Whether to always do the same amount of healing for hitting and the same amount of damage for missing notes
-	public var consistentHealth:Bool = false;
-	// How relatively hard it is to hit the note. Lower numbers are harder, with 0 being literally impossible
-	public var timingMultiplier:Float = 1;
-	// whether to play the sing animation for hitting this note
-	public var shouldBeSung:Bool = true;
-	public var ignoreHealthMods:Bool = false;
-	public var nukeNote = false;
-	public var drainNote = false;
+	public var colorSwap: ColorSwapShader.ColorSwap;
 
-	static var coolCustomGraphics:Array<FlxGraphic> = [];
+	static var noteFrameCollection:Null<FlxFramesCollection> = null;
 
-	// altNote can be int or bool. int just determines what alt is played
-	// format: [strumTime:Float, noteDirection:Int, sustainLength:Float, altNote:Union<Bool, Int>, isLiftNote:Bool, healMultiplier:Float, damageMultipler:Float, consistentHealth:Bool, timingMultiplier:Float, shouldBeSung:Bool, ignoreHealthMods:Bool, animSuffix:Union<String, Int>]
-	public function new(strumTime:Float, noteData:Int, ?prevNote:Note, ?sustainNote:Bool = false, ?customImage:Null<BitmapData>, ?customXml:Null<String>,
-			?customEnds:Null<BitmapData>, ?LiftNote:Bool = false, ?animSuffix:String, ?numSuffix:Int)
+	public static final NOTE_AMOUNT: Int = 4;
+
+	public function new(parent:PlayState)
 	{
 		super();
-		// uh oh notedata sussy :flushed:
-		if (prevNote == null)
-			prevNote = this;
 
-		this.prevNote = prevNote;
-		isSustainNote = sustainNote;
-		isLiftNote = LiftNote;
-		if (isLiftNote)
-			shouldBeSung = false;
-		x += 50;
-		// MAKE SURE ITS DEFINITELY OFF SCREEN?
-		y -= 2000;
-		this.strumTime = strumTime;
+		this.parentState = parent;
 
-		this.noteData = noteData % 8;
-		var sussy:Bool = false;
-		if (noteData >= NOTE_AMOUNT * 2 && noteData < NOTE_AMOUNT * 4)
-		{
-			mineNote = true;
-		}
-		if (noteData >= NOTE_AMOUNT * 4 && noteData < NOTE_AMOUNT * 6)
-		{
-			isLiftNote = true;
-		}
-		// die : )
-		if (noteData >= NOTE_AMOUNT * 6 && noteData < NOTE_AMOUNT * 8)
-		{
-			nukeNote = true;
-		}
-		if (noteData >= NOTE_AMOUNT * 8 && noteData < NOTE_AMOUNT * 10)
-		{
-			drainNote = true;
-		}
-		if (noteData >= NOTE_AMOUNT * 10)
-		{
-			sussy = true;
-		}
+		colorSwap = new ColorSwapShader.ColorSwap();
 
-		// var daStage:String = PlayState.curStage;
-		frames = FlxAtlasFrames.fromSparrow('assets/images/NOTE_assets.png', 'assets/images/NOTE_assets.xml');
-		if (sussy)
-		{
-			// we need to load a unique instance
-			// we only need 1 unique instance per number so we do save the graphics
-			var sussyInfo = Math.floor(noteData / (NOTE_AMOUNT * 2)) - 5;
-			if (coolCustomGraphics[sussyInfo] == null)
-				coolCustomGraphics[sussyInfo] = FlxGraphic.fromAssetKey('assets/images/NOTE_assets.png', true);
+		if (noteFrameCollection == null) {
+			initFrameCollection();
+		}
+		if (noteFrameCollection == null) throw 'ERROR: could not init note sprite animation';
 
-			frames = FlxAtlasFrames.fromSparrow(coolCustomGraphics[sussyInfo], 'assets/images/NOTE_assets.xml');
-		}
-		animation.addByPrefix('greenScroll', 'green0');
-		animation.addByPrefix('redScroll', 'red0');
-		animation.addByPrefix('blueScroll', 'blue0');
-		animation.addByPrefix('purpleScroll', 'purple0');
+		this.frames = noteFrameCollection;
 
-		animation.addByPrefix('purpleholdend', 'pruple end hold');
-		animation.addByPrefix('greenholdend', 'green hold end');
-		animation.addByPrefix('redholdend', 'red hold end');
-		animation.addByPrefix('blueholdend', 'blue hold end');
 
-		animation.addByPrefix('purplehold', 'purple hold piece');
-		animation.addByPrefix('greenhold', 'green hold piece');
-		animation.addByPrefix('redhold', 'red hold piece');
-		animation.addByPrefix('bluehold', 'blue hold piece');
-		if (isLiftNote)
-		{
-			animation.addByPrefix('greenScroll', 'green lift');
-			animation.addByPrefix('redScroll', 'red lift');
-			animation.addByPrefix('blueScroll', 'blue lift');
-			animation.addByPrefix('purpleScroll', 'purple lift');
-		}
-		if (nukeNote)
-		{
-			animation.addByPrefix('greenScroll', 'green nuke');
-			animation.addByPrefix('redScroll', 'red nuke');
-			animation.addByPrefix('blueScroll', 'blue nuke');
-			animation.addByPrefix('purpleScroll', 'purple nuke');
-		}
-		if (mineNote)
-		{
-			color = FlxColor.GRAY;
-		}
+
+		animation.add('tapNote', [0]);
+		animation.add('mineNote', [1]);
+		animation.add('nukeNote', [2]);
+		animation.add('liftNote', [6]);
+		animation.add('customNote', [7]);
 
 		setGraphicSize(Std.int(width * 0.7));
 		updateHitbox();
-		antialiasing = true;
+		antialiasing = false;
 
-		switch (noteData % 4)
-		{
+	}
+	static function initFrameCollection(): Void {
+		noteFrameCollection = new FlxFramesCollection(null, ATLAS, null);
+		if (noteFrameCollection == null) return;
+
+		var frameCollectionNormal = FlxTileFrames.fromGraphic(FlxGraphic.fromAssetKey("assets/images/arrow.png"), new FlxPoint(16, 16));
+		for (frame in frameCollectionNormal.frames) {
+			noteFrameCollection.pushFrame(frame);
+		}
+	}
+
+
+
+	public static final QUANT_ARRAY: Array<Int> = [4, 8, 12, 16, 24, 32, 48, 64, 192];
+	public var noteQuant: Int = 0;
+
+	public function updateNotePosition(?origin: FlxObject):Void {
+		if (this.noteData == null) return;
+		
+		var cursorColumn = noteData.noteDirection;
+
+		this.x = parentState.strumLine.members[cursorColumn].x;
+
+		var stepTime: Float = noteData.getStepTime();
+
+		if (stepTime >= 0) {
+			this.y = stepTime * parentState.lineSpacing;
+		}
+
+		if (origin != null) {
+			this.x += origin.x;
+			this.y += origin.y;
+		}
+
+	}
+	public function playNoteAnimation(): Void {
+		if (this.noteData == null) return;
+
+		switch (noteData.noteKind) {
+			case Normal:
+				this.animation.play('tapNote');
+			case Mine:
+				this.animation.play('mineNote');
+			case Lift:
+				this.animation.play('liftNote');
+			case Nuke:
+				this.animation.play('nukeNote');
+			default:
+				this.animation.play('customNote');
+		}
+
+		this.setGraphicSize(Std.int(parentState.strumLine.members[0].width));
+		this.updateHitbox();
+		this.antialiasing = false;
+
+		switch (noteData.noteDirection % 4) {
 			case 0:
-				x += swagWidth * 0;
-				animation.play('purpleScroll');
+				angle = -90;
 			case 1:
-				x += swagWidth * 1;
-				animation.play('blueScroll');
-			case 2:
-				x += swagWidth * 2;
-				animation.play('greenScroll');
+				angle = 0;
+			case 2: 
+				angle = 180;
 			case 3:
-				x += swagWidth * 3;
-				animation.play('redScroll');
+				angle = 90;
 		}
-		if (noteData >= NOTE_AMOUNT * 10)
-		{
-			var sussyInfo = Math.floor(noteData / (NOTE_AMOUNT * 2));
-			sussyInfo -= 4;
-			var text = new FlxText(0, 0, 0, cast sussyInfo, 32);
-			stamp(text, 0, 0);
+		var stepTime: Float = noteData.getStepTime();
+		final beatTime = stepTime / 4;
+		final measureTime = stepTime / Conductor.instance.stepsPerMeasure;
+
+		final smallestDeviation = measureTime / QUANT_ARRAY[QUANT_ARRAY.length - 1];
+
+		for (quant in 0...QUANT_ARRAY.length) {
+			final quantTime = (measureTime / QUANT_ARRAY[quant]);
+			if ((noteData.strumTime + smallestDeviation) % quantTime < smallestDeviation * 2) {
+				noteQuant = quant;
+				break;
+			}
 		}
+
+		colorSwap.hue = 0;
+		colorSwap.saturation = 1;
+		colorSwap.brightness = 1;
+		switch (noteQuant) {
+			// 4
+			case 0:
+			// 8
+			case 1:
+				colorSwap.hue = 235;
+			// 12
+			case 2:
+				colorSwap.hue = 270;
+			// 16
+			case 3:
+				colorSwap.hue = 60;
+			// 24
+			case 4:
+				colorSwap.hue = 320;
+			// 32
+			case 5:
+				colorSwap.hue = 20;
+			// 48
+			case 6:
+				colorSwap.hue = 170;
+			// 64
+			case 7:
+				colorSwap.hue = 120;
+			// 192
+			case 8:
+				colorSwap.saturation = 0;
+		}
+
+	}
+	public var noteData(default, set): Null<LegacyNoteData>;
+	function set_noteData(value:Null<LegacyNoteData>): Null<LegacyNoteData> {
+		this.noteData = value;
+
+		if (this.noteData == null) {
+			this.kill();
+			return this.noteData;
+		}
+
+		this.visible = true;
+
+		this.playNoteAnimation();
+
+		this.updateNotePosition();
+
+		return this.noteData;
+	}
+}
+
+enum AltNoteData {
+	Named(name: String);
+	Id(id: Int);
+}
+
+class LegacyNoteData {
+	public var strumTime: Float = 0;
+
+	// this 
+	public var noteDirection: Int = 0;
+	public var noteKind: NoteKind = NoteKind.Normal;
+
+	public var sustainLength: Float = 0;
+	public var isSustainNote: Bool = false;
+
+	public var altNote: Null<AltNoteData> = null;
+
+	var _stepTime: Null<Float> = null;
+
+	public function new() {}
+	public function getStepTime(force: Bool = false): Float {
+		if (!force && _stepTime != null) return _stepTime;
+		return _stepTime = Conductor.instance.getTimeInSteps(this.strumTime);
+	}
+	public static function fromRaw(raw: NoteData, flipSides: Bool = false): LegacyNoteData {
+		var res = new LegacyNoteData();
+		res.strumTime = raw.strumTime;
+		res.noteDirection = raw.noteDirection % 8;
+		if (flipSides) {
+			if (res.noteDirection > 3) {
+				res.noteDirection = res.noteDirection % 4;
+			} else {
+				res.noteDirection += 4;
+			}
+		}
+		if (raw.noteDirection < Note.NOTE_AMOUNT * 2) {
+			res.noteKind = NoteKind.Normal;
+		} else if (raw.noteDirection < Note.NOTE_AMOUNT * 4) {
+			res.noteKind = NoteKind.Mine;
+		} else if (raw.noteDirection < Note.NOTE_AMOUNT * 6) {
+			res.noteKind = NoteKind.Lift;
+		} else if (raw.noteDirection < Note.NOTE_AMOUNT * 8) {
+			res.noteKind = NoteKind.Nuke;
+		} else {
+			res.noteKind = NoteKind.CustomId(Math.floor(raw.noteDirection / (Note.NOTE_AMOUNT * 2)) - 5);
+		}
+
+		return res;
 	}
 }

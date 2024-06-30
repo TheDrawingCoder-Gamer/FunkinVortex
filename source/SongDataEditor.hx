@@ -49,7 +49,6 @@ class SongDataEditor extends TabView
 		enemyText.text = goodSong.player2;
 		gfText.text = goodSong.gf;
 		stageText.text = goodSong.stage;
-		cutsceneText.text = goodSong.cutsceneType;
 		uiText.text = goodSong.uiType;
 		songTitle.text = goodSong.song;
 		needsVoices.selected = goodSong.needsVoices;

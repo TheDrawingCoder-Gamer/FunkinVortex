@@ -4,6 +4,7 @@ import flixel.FlxGame;
 import haxe.ui.Toolkit;
 import openfl.display.FPS;
 import openfl.display.Sprite;
+import flixel.FlxG;
 
 class Main extends Sprite
 {

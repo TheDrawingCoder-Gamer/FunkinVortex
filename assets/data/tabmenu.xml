@@ -19,15 +19,7 @@
         <label style="font-size: 11px;" text="Alt Anim Num"/>
         <number-stepper max="999" id="altnotestep" style="font-size: 11px;"/>
         <checkbox text="Is Alt Note" id="altnotecheck"/>
-        <label style="font-size: 11px;" text="Heal Multiplier"/>
-        <number-stepper pos="1" step="0.1" precision="2" id="noteheal" style="font-size: 11px;"/>
-        <label style="font-size: 11px;" text="Damage Multiplier"/>
-        <number-stepper pos="1" step="0.1" precision="2" id="notehurt" style="font-size: 11px;"/>
-        <checkbox  text="Consistent Heal" id="consistentHealth"/>
-        <label style="font-size: 11px;" text="Timing Multiplier"/>
-        <number-stepper pos="1" step="0.1" precision="2" id="notetiming" style="font-size: 11px;"/>
         <checkbox text="Should be sung" id="shouldSing"/>
-        <checkbox text="Ignore health mods" id="ignoreMods"/>
         <label style="font-size: 11px;" text="Anim Suffix/Spritesheet frame"/>
         <textfield placeholder="" id="animSuffix" style="font-size: 11px;"/>
     </vbox>
@@ -52,13 +44,7 @@
         <label style="font-size: 11px;" text="Song Title"/>
         <textfield placeholder="Test" id="songTitle" style="font-size: 11px;"/>
         <checkbox text="Needs Voices" id="needsVoices"/>
-        <checkbox text="Always use Judgements" id="forceJudgements"/>
-        <checkbox text="Convert Mines to Nukes" id="convertMines"/>
         <checkbox text="Mute Inst in Editor" id="muteInst"/>
-        <checkbox text="Is Spooky (thorns dad trail)" id="isspooky"/>
-        <checkbox text="Is Moody (Roses Fangirls)" id="ismoody"/>
-        <checkbox text="Is Hey (Bopeebo)" id="ishey"/>
-        <checkbox text="Is Cheer" id="ischeer"/>
         <label style="font-size: 11px;" text="Speed"/>
         <number-stepper step="0.1" max="10" min="0.1" precision="1" id="songspeed" style="font-size: 11px;"/>
         <label style="font-size: 11px;" text="Bpm"/>

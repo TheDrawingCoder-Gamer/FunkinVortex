@@ -37,6 +37,7 @@
 	<haxelib name="flixel" />
 	<haxelib name="flixel-addons" />
 	<haxelib name="tjson"/>
+	<haxelib name="json2object"/>
 	<!--In case you want to use the addons package-->
 
 	<!--In case you want to use the ui package-->

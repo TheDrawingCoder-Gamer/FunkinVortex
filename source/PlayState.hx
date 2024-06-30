@@ -18,7 +18,7 @@ import flixel.group.FlxGroup.FlxTypedGroup;
 import flixel.group.FlxSpriteGroup;
 import flixel.input.mouse.FlxMouseEventManager;
 import flixel.math.FlxMath;
-import flixel.system.FlxSound;
+import flixel.sound.FlxSound;
 import flixel.text.FlxText;
 import flixel.ui.FlxButton;
 import flixel.util.FlxColor;
@@ -85,8 +85,9 @@ class PlayState extends FlxUIState
 	var staffLines:FlxSprite;
 	var staffLineGroup:FlxTypedSpriteGroup<Line>;
 	var defaultLine:Line;
-	var strumLine:FlxSpriteGroup;
+	public var strumLine:FlxSpriteGroup;
 	var curRenderedNotes:FlxTypedSpriteGroup<Note>;
+	var noteData: Array<Note.LegacyNoteData>;
 	var curRenderedSus:FlxSpriteGroup;
 	var snaptext:FlxText;
 	var curSnap:Float = 0;
@@ -95,7 +96,7 @@ class PlayState extends FlxUIState
 	var curSelectedNote:Array<Dynamic>;
 	var curHoldSelect:Array<Dynamic>;
 	var GRID_SIZE = 40;
-	var LINE_SPACING = 40;
+	public var lineSpacing = 40;
 	var camFollow:FlxObject;
 	var lastLineY:Int = 0;
 	var sectionMarkers:Array<Float> = [];
@@ -178,7 +179,7 @@ class PlayState extends FlxUIState
 		{
 			var json = {
 				"song": _song,
-				"generatedBy": "FunkinVortexM+"
+				"generatedBy": "FunkinVortex2"
 			};
 			var data = Json.stringify(json);
 			if ((data != null) && (data.length > 0))
@@ -218,6 +219,7 @@ class PlayState extends FlxUIState
 				vocalSound = FlxG.sound.load(vocals);
 			});
 		};
+		/*
 		var exportMenu = new MenuItem();
 		exportMenu.text = "Export to base game";
 		exportMenu.onClick = function(e:MouseEvent)
@@ -225,17 +227,6 @@ class PlayState extends FlxUIState
 			var cloneThingie = new Cloner();
 
 			var sussySong:SwagSong = cloneThingie.clone(_song);
-			// WE HAVE TO STRIP OUT ALL THE GOOD STUFF :grief:
-			Reflect.deleteField(sussySong, "gf");
-			Reflect.deleteField(sussySong, "stage");
-			Reflect.deleteField(sussySong, "isMoody");
-			Reflect.deleteField(sussySong, "isSpooky");
-			Reflect.deleteField(sussySong, "uiType");
-			Reflect.deleteField(sussySong, "cutsceneType");
-			Reflect.deleteField(sussySong, "isHey");
-			Reflect.deleteField(sussySong, "isCheer");
-			Reflect.deleteField(sussySong, "forceJudgements");
-			Reflect.deleteField(sussySong, "preferredNoteAmount");
 			for (i in 0...sussySong.notes.length)
 			{
 				for (j in 0...sussySong.notes[i].sectionNotes.length)
@@ -261,9 +252,10 @@ class PlayState extends FlxUIState
 			if ((data != null) && (data.length > 0))
 				FNFAssets.askToSave("song", data);
 		};
+		*/
 		fileMenu.addComponent(saveChartMenu);
 		fileMenu.addComponent(openChartMenu);
-		fileMenu.addComponent(exportMenu);
+		// fileMenu.addComponent(exportMenu);
 		fileMenu.addComponent(loadInstMenu);
 		fileMenu.addComponent(loadVoiceMenu);
 		menuBar.addComponent(fileMenu);
@@ -271,8 +263,8 @@ class PlayState extends FlxUIState
 		songDataThingie.x = FlxG.width / 2;
 		songDataThingie.y = 100;
 		songDataThingie.refreshUI(_song);
-		LINE_SPACING = Std.int(strumLine.height);
-		curSnap = LINE_SPACING * 4;
+		lineSpacing = Std.int(strumLine.height);
+		curSnap = lineSpacing * 4;
 		drawChartLines();
 		updateNotes();
 		camFollow = new FlxObject(FlxG.width / 2, strumLine.getGraphicMidpoint().y);
@@ -293,8 +285,7 @@ class PlayState extends FlxUIState
 		// NOT PIXEL PERFECT
 		toolInfo.scrollFactor.set();
 		tempBpm = _song.bpm;
-		Conductor.changeBPM(_song.bpm);
-		Conductor.mapBPMChanges(_song);
+		Conductor.instance.mapBPMChanges(_song);
 		selectBox = new FlxSprite().makeGraphic(1, 1, FlxColor.GRAY);
 		selectBox.visible = false;
 		selectBox.scrollFactor.set();
@@ -355,7 +346,7 @@ class PlayState extends FlxUIState
 		var daSec = FlxMath.maxInt(curSection, sectionNum);
 		for (note in _song.notes[daSec - sectionNum].sectionNotes)
 		{
-			var strum = note[0] + Conductor.stepCrochet * (_song.notes[daSec].lengthInSteps * sectionNum);
+			var strum = note[0] + Conductor.instane.stepCrochet * (_song.notes[daSec].lengthInSteps * sectionNum);
 
 			var copiedNote:Array<Dynamic> = [strum, note[1], note[2]];
 			_song.notes[daSec].sectionNotes.push(copiedNote);
@@ -705,9 +696,9 @@ class PlayState extends FlxUIState
 				if (o == 0)
 				{
 					lineColor = FlxColor.WHITE;
-					sectionMarkers.push(LINE_SPACING * ((i * 16) + o));
+					sectionMarkers.push(lineSpacing * ((i * 16) + o));
 				}
-				FlxSpriteUtil.drawLine(staffLines, FlxG.width * -0.5, LINE_SPACING * ((i * 16) + o), FlxG.width * 1.5, LINE_SPACING * ((i * 16) + o),
+				FlxSpriteUtil.drawLine(staffLines, FlxG.width * -0.5, lineSpacing * ((i * 16) + o), FlxG.width * 1.5, lineSpacing * ((i * 16) + o),
 					{color: lineColor, thickness: 5});
 				var line = staffLineGroup.recycle(Line);
 				line.color = lineColor;
@@ -715,9 +706,9 @@ class PlayState extends FlxUIState
 				line.setGraphicSize(Std.int(strumLine.width), 5);
 				line.updateHitbox();
 				line.x = strumLine.x + 50;
-				line.y = LINE_SPACING * ((i * 16) + o);
+				line.y = lineSpacing * ((i * 16) + o);
 
-				lastLineY = LINE_SPACING * ((i * 16) + o);
+				lastLineY = lineSpacing * ((i * 16) + o);
 			}
 		}
 	}
@@ -837,37 +828,37 @@ class PlayState extends FlxUIState
 		{
 			case Four:
 				snaptext.text = '4ths';
-				curSnap = (LINE_SPACING * 16) / 4;
+				curSnap = (lineSpacing * 16) / 4;
 			case Eight:
 				snaptext.text = '8ths';
-				curSnap = (LINE_SPACING * 16) / 8;
+				curSnap = (lineSpacing * 16) / 8;
 			case Twelve:
 				snaptext.text = '12ths';
-				curSnap = (LINE_SPACING * 16) / 12;
+				curSnap = (lineSpacing * 16) / 12;
 			case Sixteen:
 				snaptext.text = '16ths';
-				curSnap = (LINE_SPACING * 16) / 16;
+				curSnap = (lineSpacing * 16) / 16;
 			case Twenty:
 				snaptext.text = '20ths';
-				curSnap = (LINE_SPACING * 16) / 20;
+				curSnap = (lineSpacing * 16) / 20;
 			case TwentyFour:
 				snaptext.text = '24ths';
-				curSnap = (LINE_SPACING * 16) / 24;
+				curSnap = (lineSpacing * 16) / 24;
 			case ThirtyTwo:
 				snaptext.text = '32nds';
-				curSnap = (LINE_SPACING * 16) / 32;
+				curSnap = (lineSpacing * 16) / 32;
 			case FourtyEight:
 				snaptext.text = '48ths';
-				curSnap = (LINE_SPACING * 16) / 48;
+				curSnap = (lineSpacing * 16) / 48;
 			case SixtyFour:
 				snaptext.text = '64ths';
-				curSnap = (LINE_SPACING * 16) / 64;
+				curSnap = (lineSpacing * 16) / 64;
 			case NinetySix:
 				snaptext.text = '96ths';
-				curSnap = (LINE_SPACING * 16) / 96;
+				curSnap = (lineSpacing * 16) / 96;
 			case OneNineTwo:
 				snaptext.text = '192nds';
-				curSnap = (LINE_SPACING * 16) / 192;
+				curSnap = (lineSpacing * 16) / 192;
 		}
 	}
 
@@ -917,7 +908,7 @@ class PlayState extends FlxUIState
 		}
 	}
 
-	private function getGoodInfo(noteData:Int)
+	public function getGoodInfo(noteData:Int)
 	{
 		var curSection = curSection();
 		if (_song.notes[curSection].mustHitSection)
@@ -959,7 +950,7 @@ class PlayState extends FlxUIState
 		var badSus:Array<FlxSprite> = [];
 		for (sus in curRenderedSus.members)
 		{
-			if (sus != null && sections.contains(getSussySectionFromY(sus.y - LINE_SPACING)))
+			if (sus != null && sections.contains(getSussySectionFromY(sus.y - lineSpacing)))
 			{
 				badSus.push(sus);
 			}
@@ -1014,7 +1005,7 @@ class PlayState extends FlxUIState
 				if (daSus > 0)
 				{
 					var sustainVis:FlxSprite = new FlxSprite(note.x + note.width / 2,
-						note.y + LINE_SPACING).makeGraphic(8, Math.floor(FlxMath.remapToRange(daSus, 0, Conductor.stepCrochet * 16, 0, LINE_SPACING * 16)),
+						note.y + lineSpacing).makeGraphic(8, Math.floor(FlxMath.remapToRange(daSus, 0, Conductor.stepCrochet * 16, 0, lineSpacing * 16)),
 						FlxColor.BLUE);
 					curRenderedSus.add(sustainVis);
 				}
