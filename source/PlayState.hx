@@ -1,6 +1,5 @@
 package;
 
-import Song.SwagSong;
 import flixel.FlxG;
 import flixel.FlxObject;
 import flixel.FlxSprite;
@@ -42,6 +41,7 @@ import haxe.ui.focus.FocusManager;
 import haxe.ui.macros.ComponentMacros;
 import haxe.ui.styles.Style;
 import openfl.media.Sound;
+import vortex.data.song.SongData.*;
 
 // import bulbytools.Assets;
 
@@ -79,15 +79,15 @@ enum abstract NoteTypes(Int) from Int to Int
 @:allow(SongDataEditor)
 class PlayState extends FlxUIState
 {
-	static var _song:Song.SwagSong;
-
+	// TODO: Variations are almost entirely seperate songs. Should I impl them?
+	var songMetadata:SongMetaData;
+	var songChartData:SongChartData;
 	var chart:FlxSpriteGroup;
 	var staffLines:FlxSprite;
 	var staffLineGroup:FlxTypedSpriteGroup<Line>;
 	var defaultLine:Line;
 	public var strumLine:FlxSpriteGroup;
 	var curRenderedNotes:FlxTypedSpriteGroup<Note>;
-	var noteData: Array<Note.LegacyNoteData>;
 	var curRenderedSus:FlxSpriteGroup;
 	var snaptext:FlxText;
 	var curSnap:Float = 0;
@@ -95,7 +95,7 @@ class PlayState extends FlxUIState
 	var menuBar:MenuBar;
 	var curSelectedNote:Array<Dynamic>;
 	var curHoldSelect:Array<Dynamic>;
-	var GRID_SIZE = 40;
+	var gridSize = 40;
 	public var lineSpacing = 40;
 	var camFollow:FlxObject;
 	var lastLineY:Int = 0;

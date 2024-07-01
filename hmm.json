@@ -19,14 +19,14 @@
       "name": "haxeui-core",
       "type": "git",
       "dir": null,
-      "ref": "master",
+      "ref": "276c5cb1",
       "url": "https://github.com/haxeui/haxeui-core.git"
     },
     {
       "name": "haxeui-flixel",
       "type": "git",
       "dir": null,
-      "ref": "master",
+      "ref": "e87bd06",
       "url": "https://github.com/haxeui/haxeui-flixel.git"
     },
     {
@@ -37,17 +37,31 @@
     {
       "name": "json2object",
       "type": "haxelib",
-      "version": null
+      "version": "3.11.0"
     },
     {
       "name": "lime",
       "type": "haxelib",
-      "version": "8.1.1"
+      "version": "8.1.2"
     },
     {
       "name": "openfl",
       "type": "haxelib",
       "version": "9.3.2"
+    },
+    {
+      "name": "thx.core",
+      "type": "git",
+      "dir": null,
+      "ref": "22605ff44f01971d599641790d6bae4869f7d9f4",
+      "url": "https://github.com/FunkinCrew/thx.core"
+    },
+    {
+      "name": "thx.semver",
+      "type": "git",
+      "dir": null,
+      "ref": "b078cf4f0491430f90f6825d17c395545c757769",
+      "url": "https://github.com/FunkinCrew/thx.semver"
     },
     {
       "name": "tjson",

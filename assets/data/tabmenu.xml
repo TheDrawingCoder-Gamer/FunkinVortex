@@ -10,35 +10,10 @@
         <textfield placeholder="gf" id="gfText" style="font-size: 11px;"/>
         <label style="font-size: 11px;" text="Stage"/>
         <textfield placeholder="stage" id="stageText" style="font-size: 11px;"/>
-        <label style="font-size: 11px;" text="Cutscene Type"/>
-        <textfield placeholder="none" id="cutsceneText" style="font-size: 11px;"/>
         <label style="font-size: 11px;" text="UI Type"/>
         <textfield placeholder="normal" id="uiText" style="font-size: 11px;"/>
     </vbox>
     <vbox text="Note Info">
-        <label style="font-size: 11px;" text="Alt Anim Num"/>
-        <number-stepper max="999" id="altnotestep" style="font-size: 11px;"/>
-        <checkbox text="Is Alt Note" id="altnotecheck"/>
-        <checkbox text="Should be sung" id="shouldSing"/>
-        <label style="font-size: 11px;" text="Anim Suffix/Spritesheet frame"/>
-        <textfield placeholder="" id="animSuffix" style="font-size: 11px;"/>
-    </vbox>
-    <vbox text="Section Info">
-        <label style="font-size: 11px;" text="Section Length"/>
-        <number-stepper step="4" id="sectionlength" style="font-size: 11px;"/>
-        <label style="font-size: 11px;" text="Section Bpm"/>
-        <number-stepper id="sectionbpm" style="font-size: 11px;"/>
-        <label style="font-size: 11px;" text="Alt Anim Num"/>
-        <number-stepper max="999" id="altsection" style="font-size: 11px;"/>
-        <button id="swapsection" text="Swap Section" />
-        <label style="font-size: 11px;" text="Copy Section Num"/>
-        <number-stepper id="copyid" style="font-size: 11px;"/>
-        <button id="copysection" text="Copy Section"/>
-        
-        <checkbox text="Must hit section" id="musthitsection"/>
-        <checkbox text="Change BPM" id="changebpmsection"/>
-        <button text="Add Section" id="addsection"/>
-        <button text="Clear Section" id="clearsection"/>
     </vbox>
     <vbox text="Song Info">
         <label style="font-size: 11px;" text="Song Title"/>
@@ -49,6 +24,5 @@
         <number-stepper step="0.1" max="10" min="0.1" precision="1" id="songspeed" style="font-size: 11px;"/>
         <label style="font-size: 11px;" text="Bpm"/>
         <number-stepper max="339" min="1" id="songbpm" style="font-size: 11px;"/>
-
     </vbox>
 </tabview>

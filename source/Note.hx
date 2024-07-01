@@ -14,6 +14,7 @@ import flixel.text.FlxText;
 import flixel.util.FlxColor;
 import flixel.util.typeLimit.OneOfTwo;
 import lime.system.System;
+import vortex.data.song.SongData.*;
 
 #end
 using StringTools;
@@ -107,7 +108,7 @@ class Note extends FlxSprite
 	public function updateNotePosition(?origin: FlxObject):Void {
 		if (this.noteData == null) return;
 		
-		var cursorColumn = noteData.noteDirection;
+		var cursorColumn = noteData.data;
 
 		this.x = parentState.strumLine.members[cursorColumn].x;
 
@@ -126,14 +127,14 @@ class Note extends FlxSprite
 	public function playNoteAnimation(): Void {
 		if (this.noteData == null) return;
 
-		switch (noteData.noteKind) {
-			case Normal:
+		switch (noteData.kind) {
+			case null:
 				this.animation.play('tapNote');
-			case Mine:
+			case "mine":
 				this.animation.play('mineNote');
-			case Lift:
+			case "lift":
 				this.animation.play('liftNote');
-			case Nuke:
+			case "nuke":
 				this.animation.play('nukeNote');
 			default:
 				this.animation.play('customNote');
@@ -143,7 +144,7 @@ class Note extends FlxSprite
 		this.updateHitbox();
 		this.antialiasing = false;
 
-		switch (noteData.noteDirection % 4) {
+		switch (noteData.getNoteDirection()) {
 			case 0:
 				angle = -90;
 			case 1:
@@ -161,7 +162,7 @@ class Note extends FlxSprite
 
 		for (quant in 0...QUANT_ARRAY.length) {
 			final quantTime = (measureTime / QUANT_ARRAY[quant]);
-			if ((noteData.strumTime + smallestDeviation) % quantTime < smallestDeviation * 2) {
+			if ((noteData.time + smallestDeviation) % quantTime < smallestDeviation * 2) {
 				noteQuant = quant;
 				break;
 			}
@@ -200,8 +201,8 @@ class Note extends FlxSprite
 		}
 
 	}
-	public var noteData(default, set): Null<LegacyNoteData>;
-	function set_noteData(value:Null<LegacyNoteData>): Null<LegacyNoteData> {
+	public var noteData(default, set): Null<SongNoteData>;
+	function set_noteData(value:Null<SongNoteData>): Null<SongNoteData> {
 		this.noteData = value;
 
 		if (this.noteData == null) {
@@ -224,48 +225,3 @@ enum AltNoteData {
 	Id(id: Int);
 }
 
-class LegacyNoteData {
-	public var strumTime: Float = 0;
-
-	// this 
-	public var noteDirection: Int = 0;
-	public var noteKind: NoteKind = NoteKind.Normal;
-
-	public var sustainLength: Float = 0;
-	public var isSustainNote: Bool = false;
-
-	public var altNote: Null<AltNoteData> = null;
-
-	var _stepTime: Null<Float> = null;
-
-	public function new() {}
-	public function getStepTime(force: Bool = false): Float {
-		if (!force && _stepTime != null) return _stepTime;
-		return _stepTime = Conductor.instance.getTimeInSteps(this.strumTime);
-	}
-	public static function fromRaw(raw: NoteData, flipSides: Bool = false): LegacyNoteData {
-		var res = new LegacyNoteData();
-		res.strumTime = raw.strumTime;
-		res.noteDirection = raw.noteDirection % 8;
-		if (flipSides) {
-			if (res.noteDirection > 3) {
-				res.noteDirection = res.noteDirection % 4;
-			} else {
-				res.noteDirection += 4;
-			}
-		}
-		if (raw.noteDirection < Note.NOTE_AMOUNT * 2) {
-			res.noteKind = NoteKind.Normal;
-		} else if (raw.noteDirection < Note.NOTE_AMOUNT * 4) {
-			res.noteKind = NoteKind.Mine;
-		} else if (raw.noteDirection < Note.NOTE_AMOUNT * 6) {
-			res.noteKind = NoteKind.Lift;
-		} else if (raw.noteDirection < Note.NOTE_AMOUNT * 8) {
-			res.noteKind = NoteKind.Nuke;
-		} else {
-			res.noteKind = NoteKind.CustomId(Math.floor(raw.noteDirection / (Note.NOTE_AMOUNT * 2)) - 5);
-		}
-
-		return res;
-	}
-}
