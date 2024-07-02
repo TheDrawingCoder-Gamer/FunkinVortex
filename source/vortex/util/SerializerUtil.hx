@@ -10,6 +10,8 @@ class SerializerUtil {
       
       return serializeVersion(cast value);
     }
+
+    return value;
   }
   static inline function serializeVersion(version: Version): String {
     return version.toString();

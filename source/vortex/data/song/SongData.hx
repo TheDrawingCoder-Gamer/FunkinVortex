@@ -2,9 +2,11 @@
 
 package vortex.data.song;
 
+#if !macro
 import thx.semver.Version;
 import thx.semver.VersionRule;
 import vortex.util.ICloneable;
+#end
 
 class SongConstants {
   public static final SONG_METADATA_VERSION: Version = "2.2.3";
@@ -68,6 +70,7 @@ class SongMetadata implements ICloneable<SongMetadata>
   public var timeFormat:SongTimeFormat;
 
   public var timeChanges:Array<SongTimeChange>;
+
 
   /**
    * Defaults to `Constants.DEFAULT_VARIATION`. Populated later.
@@ -227,6 +230,16 @@ class SongTimeChange implements ICloneable<SongTimeChange>
   public function clone():SongTimeChange
   {
     return new SongTimeChange(this.timeStamp, this.bpm, this.timeSignatureNum, this.timeSignatureDen, this.beatTime, this.beatTuplets);
+  }
+
+  public function stepsPerMeasure(): Int {
+    return Std.int(timeSignatureNum / timeSignatureDen * Constants.STEPS_PER_BEAT * Constants.STEPS_PER_BEAT);
+  }
+  public function beatLengthMs(): Float {
+    return ((Constants.SECS_PER_MINUTE / bpm) * Constants.MS_PER_SEC);
+  }
+  public function measureLengthMs(): Float {
+    return beatLengthMs() * timeSignatureNum;
   }
 
   /**
@@ -563,7 +576,7 @@ class SongCharacterData implements ICloneable<SongCharacterData>
 
 class SongChartData implements ICloneable<SongChartData>
 {
-  @:default(vortex.data.song.SongConstants.SONG_CHART_DATA_VERSION)
+  @:default(vortex.data.song.SongData.SongConstants.SONG_CHART_DATA_VERSION)
   @:jcustomparse(vortex.data.DataParse.semverVersion)
   @:jcustomwrite(vortex.data.DataWrite.semverVersion)
   public var version:Version;
@@ -824,9 +837,11 @@ abstract SongEventData(SongEventDataRaw) from SongEventDataRaw to SongEventDataR
 
   public function buildTooltip():String
   {
-    var eventHandler = getHandler();
-    var eventSchema = getSchema();
+    return this.eventKind;
+    //var eventHandler = getHandler();
+    //var eventSchema = getSchema();
 
+    /*
     if (eventSchema == null) return 'Unknown Event: ${this.eventKind}';
 
     var result = '${eventHandler.getTitle()}';
@@ -848,6 +863,7 @@ abstract SongEventData(SongEventDataRaw) from SongEventDataRaw to SongEventDataR
     }
 
     return result;
+    */
   }
 
   public function clone():SongEventData

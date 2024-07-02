@@ -18,10 +18,7 @@
     <vbox text="Song Info">
         <label style="font-size: 11px;" text="Song Title"/>
         <textfield placeholder="Test" id="songTitle" style="font-size: 11px;"/>
-        <checkbox text="Needs Voices" id="needsVoices"/>
         <checkbox text="Mute Inst in Editor" id="muteInst"/>
-        <label style="font-size: 11px;" text="Speed"/>
-        <number-stepper step="0.1" max="10" min="0.1" precision="1" id="songspeed" style="font-size: 11px;"/>
         <label style="font-size: 11px;" text="Bpm"/>
         <number-stepper max="339" min="1" id="songbpm" style="font-size: 11px;"/>
     </vbox>

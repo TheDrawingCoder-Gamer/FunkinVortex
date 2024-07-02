@@ -36,8 +36,10 @@
     },
     {
       "name": "json2object",
-      "type": "haxelib",
-      "version": "3.11.0"
+      "type": "git",
+      "dir": null,
+      "url": "https://github.com/FunkinCrew/json2object",
+      "ref": "a8c26f18463c98da32f744c214fe02273e1823fa"
     },
     {
       "name": "lime",

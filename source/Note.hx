@@ -14,7 +14,7 @@ import flixel.text.FlxText;
 import flixel.util.FlxColor;
 import flixel.util.typeLimit.OneOfTwo;
 import lime.system.System;
-import vortex.data.song.SongData.*;
+import vortex.data.song.SongData;
 
 #end
 using StringTools;
@@ -77,7 +77,7 @@ class Note extends FlxSprite
 
 		this.frames = noteFrameCollection;
 
-
+		this.shader = colorSwap.shader;
 
 		animation.add('tapNote', [0]);
 		animation.add('mineNote', [1]);
@@ -115,7 +115,7 @@ class Note extends FlxSprite
 		var stepTime: Float = noteData.getStepTime();
 
 		if (stepTime >= 0) {
-			this.y = stepTime * parentState.lineSpacing;
+			this.y = stepTime * PlayState.LINE_SPACING;
 		}
 
 		if (origin != null) {
@@ -144,19 +144,18 @@ class Note extends FlxSprite
 		this.updateHitbox();
 		this.antialiasing = false;
 
-		switch (noteData.getNoteDirection()) {
+		switch (noteData.getDirection()) {
 			case 0:
-				angle = -90;
+				angle = 90;
 			case 1:
 				angle = 0;
 			case 2: 
 				angle = 180;
 			case 3:
-				angle = 90;
+				angle = -90;
 		}
-		var stepTime: Float = noteData.getStepTime();
-		final beatTime = stepTime / 4;
-		final measureTime = stepTime / Conductor.instance.stepsPerMeasure;
+		final timeChange = Conductor.instance.timeChangeAt(noteData.time);
+		final measureTime = timeChange.beatLengthMs() * 4;
 
 		final smallestDeviation = measureTime / QUANT_ARRAY[QUANT_ARRAY.length - 1];
 
@@ -169,35 +168,35 @@ class Note extends FlxSprite
 		}
 
 		colorSwap.hue = 0;
-		colorSwap.saturation = 1;
-		colorSwap.brightness = 1;
+		colorSwap.saturation = 0;
+		colorSwap.brightness = 0;
 		switch (noteQuant) {
 			// 4
 			case 0:
 			// 8
 			case 1:
-				colorSwap.hue = 235;
+				colorSwap.hue = 235 / 360.0;
 			// 12
 			case 2:
-				colorSwap.hue = 270;
+				colorSwap.hue = 270 / 360.0;
 			// 16
 			case 3:
-				colorSwap.hue = 60;
+				colorSwap.hue = 60 / 360.0;
 			// 24
 			case 4:
-				colorSwap.hue = 320;
+				colorSwap.hue = 320 / 360.0;
 			// 32
 			case 5:
-				colorSwap.hue = 20;
+				colorSwap.hue = 20 / 360.0;
 			// 48
 			case 6:
-				colorSwap.hue = 170;
+				colorSwap.hue = 170 / 360.0;
 			// 64
 			case 7:
-				colorSwap.hue = 120;
+				colorSwap.hue = 120 / 360.0;
 			// 192
 			case 8:
-				colorSwap.saturation = 0;
+				colorSwap.saturation = -1;
 		}
 
 	}
@@ -218,10 +217,26 @@ class Note extends FlxSprite
 
 		return this.noteData;
 	}
+
+	public function isNoteVisible(viewAreaBottom: Float, viewAreaTop:Float): Bool {
+		var aboveViewArea = this.y + this.height < viewAreaTop;
+
+		var belowViewArea = this.y > viewAreaBottom;
+
+		return !aboveViewArea && !belowViewArea;
+	}
+
+	public static function wouldNoteBeVisible(viewAreaBottom: Float, viewAreaTop: Float, noteData: SongNoteData, ?origin:FlxObject): Bool {
+		var stepTime = inline noteData.getStepTime();
+		var notePosY = stepTime * PlayState.LINE_SPACING;
+
+		if (origin != null) notePosY += origin.y;
+
+		var aboveViewArea = (notePosY + PlayState.LINE_SPACING < viewAreaTop);
+		var belowViewArea = (notePosY > viewAreaBottom);
+
+		return !aboveViewArea && !belowViewArea;
+	}
 }
 
-enum AltNoteData {
-	Named(name: String);
-	Id(id: Int);
-}
 

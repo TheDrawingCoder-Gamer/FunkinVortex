@@ -5,12 +5,12 @@ import thx.semver.VersionRule;
 
 class DataWrite {
   public static function semverVersion(value: Version): String {
-    return '"${value.toString()}"'
+    return '"${value.toString()}"';
   }
   public static function semverVersionRule(value: VersionRule): String {
-    return '"${value.toString()}"'
+    return '"${value.toString()}"';
   }
   public static function dynamicValue(value: Dynamic): String {
-    return vortex.util.toJSON(value);
+    return vortex.util.SerializerUtil.toJSON(value);
   }
 }

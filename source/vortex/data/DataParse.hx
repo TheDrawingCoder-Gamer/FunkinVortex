@@ -42,4 +42,8 @@ class DataParse {
         throw 'Expected version rule property $name to be a string, but it was ${json.value}.';
     }
   }
+
+  public static function dynamicValue(json: Json, name: String): Dynamic {
+    return Tools.getValue(json);
+  }
 }

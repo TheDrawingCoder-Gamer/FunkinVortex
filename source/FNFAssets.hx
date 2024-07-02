@@ -122,7 +122,7 @@ class FNFAssets
 		return promise.future;
 	}
 
-	public static function askToBrowseForPath(?filter:String, ?title:String = "Select a chart"):Future<String>
+	public static function askToBrowseForPath(?filter:String, ?title:String = "Select a chart", why: FileDialogType = FileDialogType.OPEN):Future<String>
 	{
 		fdString = null;
 		fd = new FileDialog();
@@ -182,6 +182,7 @@ class FNFAssets
 		var idSus = Path.withoutDirectory(id);
 		_file.save(data, idSus);
 	}
+
 
 	static function onSaveComplete(_):Void
 	{

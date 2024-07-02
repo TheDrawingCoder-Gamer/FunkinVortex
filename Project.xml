@@ -47,6 +47,9 @@
 	<!-- git https://github.com/haxeui/haxeui-flixel-->
 	<haxelib name="haxeui-flixel"/>
 
+	<haxelib name="thx.core"/>
+	<haxelib name="thx.semver"/>
+
 	<!-- ______________________________ Haxedefines _____________________________ -->
 
 	<!--Enable the Flixel core recording system-->
