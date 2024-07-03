@@ -109,15 +109,16 @@ class PlayState extends FlxUIState
 	var defaultLine:Line;
 	public var strumLine:FlxSpriteGroup;
 	var curRenderedNotes:FlxTypedSpriteGroup<Note>;
-	var curRenderedSus:FlxSpriteGroup;
+	var curRenderedSus:FlxTypedSpriteGroup<SusNote>;
 	var snaptext:FlxText;
 	var curSnap:Float = 0;
 	var curKeyType:Int = Normal;
 	var menuBar:MenuBar;
 	var curSelectedNote:Null<SongNoteData> = null;
 	var curHoldSelect:Null<SongNoteData> = null;
-	var gridSize = 40;
+	public static final GRID_SIZE = 40;
 	public static final LINE_SPACING: Int = 40;
+	public static final STRUMLINE_SIZE: Int = 4;
 	var camFollow:FlxObject;
 	var lastLineY:Int = 0;
 	var sectionMarkers:Array<Float> = [];
@@ -148,16 +149,16 @@ class PlayState extends FlxUIState
 		super.create();
 		strumLine = new FlxSpriteGroup(0, 0);
 		curRenderedNotes = new FlxTypedSpriteGroup<Note>();
-		curRenderedSus = new FlxSpriteGroup();
+		curRenderedSus = new FlxTypedSpriteGroup<SusNote>();
 		if (songChartData == null)
 			songChartData = new SongChartData(["normal" => 1], [], ["normal" => []]);
 		if (songMetadata == null)
 			songMetadata = new SongMetadata("Test", "Unknown");
 		// make it ridulously big
 		// TODO: Camera scrolling
-		// staffLines = new FlxSprite().makeGraphic(FlxG.width, Std.int((musicSound?.length ?? 6000) * LINE_SPACING), FlxColor.BLACK);
+		staffLines = new FlxSprite().makeGraphic(FlxG.width, Std.int((musicSound?.length ?? 6000) * LINE_SPACING), FlxColor.BLACK);
 		staffLineGroup = new FlxTypedSpriteGroup<Line>();
-		staffLineGroup.setPosition(0, FlxG.height / 2);
+		staffLineGroup.setPosition(0, 0);
 		defaultLine = new Line();
 		staffLineGroup.add(defaultLine);
 		defaultLine.kill();
@@ -165,14 +166,14 @@ class PlayState extends FlxUIState
 		strumLine.screenCenter(X);
 		strumLine.x -= 250;
 
-		trace(strumLine);
-		//staffLines.screenCenter(X);
+		staffLines.screenCenter(X);
+		staffLineGroup.screenCenter(X);
 		chart = new FlxSpriteGroup();
-		//chart.add(staffLines);
+		chart.add(staffLines);
 		chart.add(staffLineGroup);
 		chart.add(strumLine);
-		chart.add(curRenderedNotes);
 		chart.add(curRenderedSus);
+		chart.add(curRenderedNotes);
 		#if !electron
 		FlxG.mouse.useSystemCursor = true;
 		#end
@@ -200,19 +201,7 @@ class PlayState extends FlxUIState
 		openChartMenu.text = "Open Chart";
 		openChartMenu.onClick = function(e:MouseEvent)
 		{
-			var future = FNFAssets.askToBrowseForPath("json", "Select Chart Data");
-			future.onComplete(function(s:String)
-			{
-				var chartReader = new json2object.JsonParser<SongChartData>();
-				var metadataReader = new json2object.JsonParser<SongMetadata>();
-
-				songChartData = chartReader.fromJson(File.getContent(s), s);
-				final metadataPath = s.replace("-chart", "-metadata");
-				songMetadata = metadataReader.fromJson(File.getContent(metadataPath), metadataPath);
-				quantizationDirty = true;
-				noteDisplayDirty = true;
-				chartDirty = true;
-			});
+			loadFromFile();
 		};
 		var loadInstMenu = new MenuItem();
 		loadInstMenu.text = "Load Instrument";
@@ -224,7 +213,6 @@ class PlayState extends FlxUIState
 				musicSound = Sound.fromFile(s);
 				FlxG.sound.playMusic(musicSound);
 				FlxG.sound.music.pause();
-				quantizationDirty = true;
 				chartDirty = true;
 			});
 		};
@@ -289,7 +277,8 @@ class PlayState extends FlxUIState
 		handleNotes();
 		camFollow = new FlxObject(FlxG.width / 2, strumLine.getGraphicMidpoint().y);
 		FlxG.camera.follow(camFollow, LOCKON);
-		// staffLines.y += strumLine.height / 2;
+		//staffLines.y += strumLine.height / 2;
+			
 		snaptext = new FlxText(0, FlxG.height, 0, '4ths', 24);
 		snaptext.y -= snaptext.height;
 		snaptext.scrollFactor.set();
@@ -309,7 +298,6 @@ class PlayState extends FlxUIState
 		selectBox.visible = false;
 		selectBox.scrollFactor.set();
 		// addUI();
-		// add(staffLines);
 		add(strumLine);
 		add(curRenderedNotes);
 		add(curRenderedSus);
@@ -343,14 +331,18 @@ class PlayState extends FlxUIState
 			songChartData = chartReader.fromJson(File.getContent(s), s);
 			final metadataPath = s.replace("-chart", "-metadata");
 			songMetadata = metadataReader.fromJson(File.getContent(metadataPath), metadataPath);
-			FlxG.resetState();
+			noteDisplayDirty = true;
+			// quantizationDirty = true;
+			chartDirty = true;
+			saveDataDirty = false;
+			
 		});
 	}
 
 
 	var selecting:Bool = false;
 
-	override public function update(elapsed:Float)
+override public function update(elapsed:Float)
 	{
 		super.update(elapsed);
 		noteControls = [
@@ -576,6 +568,7 @@ class PlayState extends FlxUIState
 		}
 		handleNotes();
 		handleQuantization();
+		handleChart();
 		camFollow.setPosition(FlxG.width / 2, strumLine.y);
 	}
 
@@ -586,11 +579,13 @@ class PlayState extends FlxUIState
 		if (change != 0)
 			strumLine.y = Math.round(strumLine.y / curSnap) * curSnap;
 		var strumTime = getStrumTime(strumLine.y);
+		/*
 		if (curSelectedNote != null)
 		{
 			curSelectedNote.length = strumTime - curSelectedNote.time;
 			curSelectedNote.length = FlxMath.bound(curSelectedNote.length, 0);
 		}
+		*/
 		if (curHoldSelect != null)
 		{
 			curHoldSelect.length = strumTime - curHoldSelect.time;
@@ -637,21 +632,24 @@ class PlayState extends FlxUIState
 	private function drawChartLines()
 	{
 		if (musicSound == null) return;
-		// staffLines.makeGraphic(FlxG.width, Std.int((musicSound?.length ?? 6000) * LINE_SPACING), FlxColor.BLACK);
-		for (item in staffLineGroup) {
-			item.kill();
-		}
-		var time:Float = 0;
-		var i:Int = 0;
-		while (time < musicSound.length) {
+		final bottom = getYfromStrum(musicSound.length);
+		staffLines.makeGraphic(FlxG.width, Std.int(bottom) + 10, FlxColor.BLACK);
+		//for (item in staffLineGroup) {
+		//	item.kill();
+		//}
+		var i = 0;
+		var y = 0;
+		while (y < bottom) {
+			final time = getStrumTime(y);	
 			final timeChange = Conductor.instance.timeChangeAt(time);
 			var lineColor = i % timeChange.stepsPerMeasure() == 0 ? FlxColor.WHITE : FlxColor.GRAY;
 			if (i % timeChange.stepsPerMeasure() == 0) {
 				i = 0;
 			}
-			//FlxSpriteUtil.drawLine(staffLines, FlxG.width * -0.5, LINE_SPACING * time, FlxG.width * 1.5, LINE_SPACING * time,
-			//		{color: lineColor,
-			//			thickness: 5});
+			FlxSpriteUtil.drawLine(staffLines, FlxG.width * -0.5, y, FlxG.width * 1.5, y,
+					{color: lineColor,
+						thickness: 5});
+			/*
 			var line = staffLineGroup.recycle(() -> new Line());
 			line.color = lineColor;
 
@@ -659,9 +657,10 @@ class PlayState extends FlxUIState
 
 			line.updateHitbox();
 			line.x = strumLine.x;
-			line.y = LINE_SPACING * time;
-
-			time += timeChange.beatLengthMs();
+			line.y = y;
+			*/
+		
+			y += LINE_SPACING * Constants.STEPS_PER_BEAT;
 			i += 1;
 		}
 	}
@@ -840,6 +839,13 @@ class PlayState extends FlxUIState
 			noteSprite.playNoteAnimation();
 		}
 	}
+	private function handleChart(): Void {
+		if (!chartDirty) return;
+
+		chartDirty = false;
+
+		drawChartLines();
+	}
 	public function updateNotes(): Void {
 		noteDisplayDirty = true;
 	}
@@ -864,7 +870,22 @@ class PlayState extends FlxUIState
 
 		displayedNoteData.insertionSort((a, b) -> FlxSort.byValues(FlxSort.ASCENDING, a.time, b.time));
 
-
+		var displayedHoldNoteData:Array<SongNoteData> = [];
+		for (holdNoteSprite in curRenderedSus.members) {
+			if (holdNoteSprite == null || holdNoteSprite.noteData == null || !holdNoteSprite.exists || !holdNoteSprite.visible) {
+				continue;
+			}
+			
+			if (!currentSongChartNotes.fastContains(holdNoteSprite.noteData) || holdNoteSprite.noteData.length == 0) {
+				holdNoteSprite.kill();
+			} else if (displayedHoldNoteData.fastContains(holdNoteSprite.noteData)) {
+				holdNoteSprite.kill();
+			} else {
+				displayedHoldNoteData.push(holdNoteSprite.noteData);
+				holdNoteSprite.updateHoldNotePosition();
+			}
+		}
+		displayedHoldNoteData.insertionSort((a, b) -> FlxSort.byValues(FlxSort.ASCENDING, a.time, b.time));
 		for (noteData in currentSongChartNotes) {
 			if (noteData == null) continue;
 
@@ -877,6 +898,22 @@ class PlayState extends FlxUIState
 			noteSprite.parentState = this;
 
 			noteSprite.noteData = noteData;
+
+			if (noteSprite.noteData != null 
+				&&  noteSprite.noteData.length > 0
+				&& !displayedHoldNoteData.contains(noteSprite.noteData)
+				) {
+				final holdNoteSprite = curRenderedSus.recycle(() -> new SusNote(this));
+				noteSprite.childSus = holdNoteSprite;
+				var noteLengthPixels = noteSprite.noteData.getStepLength() * LINE_SPACING;
+
+				holdNoteSprite.noteData = noteSprite.noteData;
+
+				holdNoteSprite.setHeightDirectly(noteLengthPixels);
+
+				holdNoteSprite.updateHoldNotePosition();
+				noteSprite.playNoteAnimation();
+			}
 		}
 	}
 

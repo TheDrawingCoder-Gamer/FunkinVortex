@@ -60,6 +60,7 @@ class Note extends FlxSprite
 
 	static var noteFrameCollection:Null<FlxFramesCollection> = null;
 
+	public var childSus: Null<SusNote> = null;
 	public static final NOTE_AMOUNT: Int = 4;
 
 	public function new(parent:PlayState)
@@ -100,9 +101,15 @@ class Note extends FlxSprite
 		}
 	}
 
+	public override function kill(): Void {
+		super.kill();
+		childSus = null;
+	}
+	public override function revive(): Void {
+		super.revive();
+		childSus = null;
+	}
 
-
-	public static final QUANT_ARRAY: Array<Int> = [4, 8, 12, 16, 24, 32, 48, 64, 192];
 	public var noteQuant: Int = 0;
 
 	public function updateNotePosition(?origin: FlxObject):Void {
@@ -157,10 +164,10 @@ class Note extends FlxSprite
 		final timeChange = Conductor.instance.timeChangeAt(noteData.time);
 		final measureTime = timeChange.beatLengthMs() * 4;
 
-		final smallestDeviation = measureTime / QUANT_ARRAY[QUANT_ARRAY.length - 1];
+		final smallestDeviation = measureTime / Constants.QUANT_ARRAY[Constants.QUANT_ARRAY.length - 1];
 
-		for (quant in 0...QUANT_ARRAY.length) {
-			final quantTime = (measureTime / QUANT_ARRAY[quant]);
+		for (quant in 0...Constants.QUANT_ARRAY.length) {
+			final quantTime = (measureTime / Constants.QUANT_ARRAY[quant]);
 			if ((noteData.time + smallestDeviation) % quantTime < smallestDeviation * 2) {
 				noteQuant = quant;
 				break;
@@ -197,6 +204,10 @@ class Note extends FlxSprite
 			// 192
 			case 8:
 				colorSwap.saturation = -1;
+				colorSwap.brightness = -0.2;
+		}
+		if (childSus != null) {
+			childSus.shader = colorSwap.shader;
 		}
 
 	}
