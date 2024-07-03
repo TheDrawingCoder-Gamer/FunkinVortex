@@ -61,7 +61,7 @@ enum abstract Snaps(Int) from Int to Int
 	var Eight;
 	var Twelve;
 	var Sixteen;
-	var Twenty;
+	//var Twenty;
 	var TwentyFour;
 	var ThirtyTwo;
 	var FourtyEight;
@@ -214,6 +214,7 @@ class PlayState extends FlxUIState
 				FlxG.sound.playMusic(musicSound);
 				FlxG.sound.music.pause();
 				chartDirty = true;
+				quantizationDirty = true;
 			});
 		};
 		var loadVoiceMenu = new MenuItem();
@@ -660,8 +661,8 @@ override public function update(elapsed:Float)
 			line.y = y;
 			*/
 		
-			y += LINE_SPACING * Constants.STEPS_PER_BEAT;
-			i += 1;
+			y += LINE_SPACING * 4;
+			i += 4;
 		}
 	}
 
@@ -771,9 +772,9 @@ override public function update(elapsed:Float)
 			case Sixteen:
 				snaptext.text = '16ths';
 				curSnap = (LINE_SPACING * 16) / 16;
-			case Twenty:
-				snaptext.text = '20ths';
-				curSnap = (LINE_SPACING * 16) / 20;
+			//case Twenty:
+			//	snaptext.text = '20ths';
+			//	curSnap = (LINE_SPACING * 16) / 20;
 			case TwentyFour:
 				snaptext.text = '24ths';
 				curSnap = (LINE_SPACING * 16) / 24;
@@ -926,6 +927,10 @@ override public function update(elapsed:Float)
 	private function getStrumTime(yPos:Float):Float
 	{
 		return Conductor.instance.getStepTimeInMs(yPos / LINE_SPACING);
+	}
+	// Get the nearest row
+	private function getRow(yPos:Float): Int {
+		return Math.round((yPos / LINE_SPACING) * Constants.ROWS_PER_STEP);
 	}
 
 }

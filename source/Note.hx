@@ -161,14 +161,15 @@ class Note extends FlxSprite
 			case 3:
 				angle = -90;
 		}
-		final timeChange = Conductor.instance.timeChangeAt(noteData.time);
-		final measureTime = timeChange.beatLengthMs() * 4;
 
-		final smallestDeviation = measureTime / Constants.QUANT_ARRAY[Constants.QUANT_ARRAY.length - 1];
 
+		// 192
+		noteQuant = 10;
+		final row = Math.round(noteData.getStepTime() * Constants.ROWS_PER_STEP);
 		for (quant in 0...Constants.QUANT_ARRAY.length) {
-			final quantTime = (measureTime / Constants.QUANT_ARRAY[quant]);
-			if ((noteData.time + smallestDeviation) % quantTime < smallestDeviation * 2) {
+			final daQuant = Constants.QUANT_ARRAY[quant];
+			// ???
+			if (row % Math.round(Constants.ROWS_PER_MEASURE / daQuant) == 0) {
 				noteQuant = quant;
 				break;
 			}
@@ -201,7 +202,7 @@ class Note extends FlxSprite
 			// 64
 			case 7:
 				colorSwap.hue = 120 / 360.0;
-			// 192
+			// 20, 96, 192
 			case 8:
 				colorSwap.saturation = -1;
 				colorSwap.brightness = -0.2;
