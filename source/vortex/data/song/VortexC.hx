@@ -75,6 +75,7 @@ class VortexC {
     return new VortexC(song.songId, songData, song.instrumental, song.playerVocals, song.opponentVocals);
   }
 
+
   public function save(path: String, ?onSaveCb:String->Void, ?onCancelCb:Void->Void): Void {
     var zipEntries:Array<haxe.zip.Entry> = [];
 

@@ -25,9 +25,9 @@ class SustainTrail extends FlxSprite
    */
   static final TRIANGLE_VERTEX_INDICES:Array<Int> = [0, 1, 2, 1, 2, 3, 4, 5, 6, 5, 6, 7];
 
-  public var strumTime:Float = 0; // millis
-  public var sustainLength(default, set):Float = 0; // millis
-  public var fullSustainLength:Float = 0;
+  public var strumTime:Int = 0; // rows
+  public var sustainLength(default, set):Int = 0; // rows
+  public var fullSustainLength:Int = 0;
   public var noteData:Null<SongNoteData>;
 
 
@@ -74,13 +74,13 @@ class SustainTrail extends FlxSprite
    * What part of the trail's end actually represents the end of the note.
    * This can be used to have a little bit sticking out.
    */
-  public var endOffset:Float = 0.5; // 0.73 is roughly the bottom of the sprite in the normal graphic!
+  public var endOffset:Float = 1; // 0.73 is roughly the bottom of the sprite in the normal graphic!
 
   /**
    * At what point the bottom for the trail's end should be clipped off.
    * Used in cases where there's an extra bit of the graphic on the bottom to avoid antialiasing issues with overflow.
    */
-  public var bottomClip:Float = 0.9;
+  public var bottomClip:Float = 1;
 
   public var isPixel:Bool;
 
@@ -93,7 +93,7 @@ class SustainTrail extends FlxSprite
    * @param SustainLength Length in milliseconds.
    * @param fileName
    */
-  public function new(quantization: Int, sustainLength:Float)
+  public function new(quantization: Int, sustainLength:Int)
   {
     super(0, 0, "assets/images/arrowends.png");
 
@@ -111,7 +111,7 @@ class SustainTrail extends FlxSprite
 
     // CALCULATE SIZE
     graphicWidth = graphic.width / 8 * zoom; // amount of notes * 2
-    graphicHeight = sustainHeight(sustainLength, 1.0);
+    graphicHeight = sustainHeight(sustainLength);
     // instead of scrollSpeed, PlayState.SONG.speed
 
 
@@ -144,18 +144,17 @@ class SustainTrail extends FlxSprite
   }
 
   /**
-   * Calculates height of a sustain note for a given length (milliseconds) and scroll speed.
-   * @param	susLength	The length of the sustain note in milliseconds.
-   * @param	scroll		The current scroll speed.
+   * Calculates height of a sustain note for a given length (rows) and scroll speed.
+   * @param	susLength	The length of the sustain note in rows.
    */
-  public static inline function sustainHeight(susLength:Float, scroll:Float)
+  public static inline function sustainHeight(susLength:Int)
   {
-    return (susLength * 0.45 * scroll);
+    return (susLength * PlayState.LINE_SPACING / Constants.ROWS_PER_STEP);
   }
 
-  function set_sustainLength(s:Float):Float
+  function set_sustainLength(s:Int):Int
   {
-    if (s < 0.0) s = 0.0;
+    if (s < 0) s = 0;
 
     if (sustainLength == s) return s;
     this.sustainLength = s;
@@ -165,7 +164,7 @@ class SustainTrail extends FlxSprite
 
   function triggerRedraw()
   {
-    graphicHeight = sustainHeight(sustainLength, 1.0);
+    graphicHeight = sustainHeight(sustainLength);
     updateClipping();
     updateHitbox();
   }
@@ -185,7 +184,7 @@ class SustainTrail extends FlxSprite
    */
   public function updateClipping(songTime:Float = 0):Void
   {
-    var clipHeight:Float = FlxMath.bound(sustainHeight(sustainLength - (songTime - strumTime), 1.0), 0, graphicHeight);
+    var clipHeight:Float = FlxMath.bound(sustainHeight(sustainLength), 0, graphicHeight);
     if (clipHeight <= 0.1)
     {
       visible = false;
@@ -257,7 +256,7 @@ class SustainTrail extends FlxSprite
 
     // Bottom left
     vertices[6 * 2] = vertices[2 * 2]; // Inline with left side
-    vertices[6 * 2 + 1] = flipY ? (graphic.height * (-bottomClip + endOffset) * zoom) : (graphicHeight + graphic.height * (bottomClip - endOffset) * zoom);
+    vertices[6 * 2 + 1] = flipY ? (graphic.height * (-bottomClip + endOffset) * zoom) : (vertices[4 * 2 + 1] + graphic.height * zoom);
 
     // Bottom right
     vertices[7 * 2] = vertices[3 * 2]; // Inline with right side
@@ -266,14 +265,7 @@ class SustainTrail extends FlxSprite
     // === END CAP UVs ===
     // Top left
     uvtData[4 * 2] = 0.5; // 12.5%/37.5%/62.5%/87.5% of the way through the image (1/8th past the top left of hold)
-    uvtData[4 * 2 + 1] = if (partHeight > 0)
-    {
-      0;
-    }
-    else
-    {
-      (bottomHeight - clipHeight) / zoom / graphic.height;
-    };
+    uvtData[4 * 2 + 1] = 0;
 
     // Top right
     uvtData[5 * 2] = 1; // right edge 

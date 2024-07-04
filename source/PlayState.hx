@@ -54,6 +54,7 @@ import vortex.audio.FunkinSound;
 import vortex.audio.VoicesGroup;
 
 import vortex.data.song.VortexC;
+import vortex.data.song.vslice.FNFC;
 import vortex.util.assets.SoundUtil;
 import haxe.io.Bytes;
 
@@ -139,7 +140,7 @@ class PlayState extends FlxUIState
 	var selectBox:FlxSprite;
 	var toolInfo:FlxText;
 	public var audioInstTrack:Null<FunkinSound> = null;
-	public var vocalsGroup:VoicesGroup = new VoicesGroup();
+	public var audioVocalTrackGroup:VoicesGroup = new VoicesGroup();
 	public var audioInstTrackData:Null<Bytes> = null;
 	public var playerVocalTrackData:Null<Bytes> = null;
 	public var oppVocalTrackData:Null<Bytes> = null;
@@ -204,6 +205,12 @@ class PlayState extends FlxUIState
 		{
 			loadFromFile();
 		};
+		var importFNFCMenu = new MenuItem();
+		importFNFCMenu.text = "Import FNFC";
+		importFNFCMenu.onClick = function(e:MouseEvent)
+		{
+			importFromFNFC();
+		};
 		var loadInstMenu = new MenuItem();
 		loadInstMenu.text = "Load Instrument";
 		loadInstMenu.onClick = function(e:MouseEvent)
@@ -267,6 +274,7 @@ class PlayState extends FlxUIState
 		*/
 		fileMenu.addComponent(saveChartMenu);
 		fileMenu.addComponent(openChartMenu);
+		fileMenu.addComponent(importFNFCMenu);
 		// fileMenu.addComponent(exportMenu);
 		fileMenu.addComponent(loadInstMenu);
 		fileMenu.addComponent(loadVoiceMenu);
@@ -330,19 +338,45 @@ class PlayState extends FlxUIState
 		{
 			try {
 				final vortexc = VortexC.loadFromPath(s);
-				songData = vortexc.songData;
-				songId = vortexc.songId;
-				audioInstTrackData = vortexc.instrumental;
-				playerVocalTrackData = vortexc.playerVocals;
-				oppVocalTrackData = vortexc.opponentVocals;
-				reloadInstrumental();
-				noteDisplayDirty = true;
-				chartDirty = true;
-				saveDataDirty = false;
+				loadFromVortexC(vortexc);
 			} catch (e) {
 				trace(e);
 			}
 			
+		});
+	}
+	private function loadFromVortexC(vortexc: VortexC): Void {
+		try {
+			songData = vortexc.songData;
+			songId = vortexc.songId;
+			audioInstTrackData = vortexc.instrumental;
+			playerVocalTrackData = vortexc.playerVocals;
+			oppVocalTrackData = vortexc.opponentVocals;
+			reloadInstrumental();
+			Conductor.instance.mapTimeChanges(songData.timeChanges);
+			noteDisplayDirty = true;
+			chartDirty = true;
+			saveDataDirty = false;
+		} catch (e) {
+			trace(e);
+		}
+	}
+	private function importFromFNFC(?variation:String): Void {
+		if (variation == null) variation = Constants.DEFAULT_VARIATION;
+		var future = FNFAssets.askToBrowseForPath("fnfc", "Select FNF Chart");
+		future.onComplete(function(s:String)
+		{
+			try {
+				final fnfc = FNFC.loadFromPath(s);
+				// TODO: dialog
+				if (fnfc == null) return;
+				final fnfcSong = fnfc.getVariation(variation);
+				if (fnfcSong == null) return;
+				final vortexc = VortexC.fromFNFCSong(fnfcSong);
+				loadFromVortexC(vortexc);
+			} catch (e) {
+				trace(e);
+			}
 		});
 	}
 
@@ -382,7 +416,7 @@ class PlayState extends FlxUIState
 	}
 	private function playVocals(isDaddy: Bool): Bool {
 		final track = if (isDaddy) oppVocalTrackData else playerVocalTrackData;
-		final vocalTrack = SoundUtil.buildSoundsFromBytes(track);
+		final vocalTrack = SoundUtil.buildSoundFromBytes(track);
 
 		if (vocalTrack != null) {
 			if (isDaddy) {
@@ -408,6 +442,8 @@ class PlayState extends FlxUIState
 
 		// refresh other bits
 		chartDirty = true;
+
+		return true;
 	}
 	private function stopExistingVocals():Void {
 		audioVocalTrackGroup.clear();
@@ -583,18 +619,18 @@ class PlayState extends FlxUIState
 				if (FlxG.sound.music.playing)
 				{
 					FlxG.sound.music.pause();
-					if (vocalSound != null)
+					if (audioVocalTrackGroup != null)
 					{
-						vocalSound.pause();
+						audioVocalTrackGroup.pause();
 					}
 				}
 				else
 				{
 					FlxG.sound.music.time = getStrumTime(strumLine.y);
 					FlxG.sound.music.play();
-					if (vocalSound != null)
+					if (audioVocalTrackGroup != null)
 					{
-						vocalSound.play();
+						audioVocalTrackGroup.play();
 					}
 				}
 			}
@@ -603,9 +639,9 @@ class PlayState extends FlxUIState
 				strumLine.y = getYfromStrum(FlxG.sound.music.time);
 				// curSectionTxt.text = 'Section: ' + getSussySectionFromY(strumLine.y);
 				// sectionInfo.changeSection(getSussySectionFromY(strumLine.y));
-				if (vocalSound != null && !CoolUtil.nearlyEquals(vocalSound.time, FlxG.sound.music.time, 2))
+				if (audioVocalTrackGroup != null && !CoolUtil.nearlyEquals(audioVocalTrackGroup.time, FlxG.sound.music.time, 2))
 				{
-					vocalSound.time = FlxG.sound.music.time;
+					audioVocalTrackGroup.time = FlxG.sound.music.time;
 				}
 			}
 		}
@@ -650,7 +686,7 @@ class PlayState extends FlxUIState
 
 		if (change != 0)
 			strumLine.y = Math.round(strumLine.y / curSnap) * curSnap;
-		var strumTime = getStrumTime(strumLine.y);
+		var strumRow = getRow(strumLine.y);
 		/*
 		if (curSelectedNote != null)
 		{
@@ -660,8 +696,8 @@ class PlayState extends FlxUIState
 		*/
 		if (curHoldSelect != null)
 		{
-			curHoldSelect.length = strumTime - curHoldSelect.time;
-			curHoldSelect.length = FlxMath.bound(curHoldSelect.length, 0);
+			curHoldSelect.length = strumRow - curHoldSelect.rowTime;
+			curHoldSelect.length = Std.int(FlxMath.bound(curHoldSelect.length, 0));
 		}
 		updateNotes();
 		// curSectionTxt.text = 'Measure: ' + Conductor.instance.timeChangeAt(strumTime).stepsPerMeasure();
@@ -705,7 +741,6 @@ class PlayState extends FlxUIState
 	{
 		if (audioInstTrack == null) return;
 		final bottom = getYfromStrum(audioInstTrack.length);
-		staffLines.makeGraphic(FlxG.width, Std.int(bottom) + 10, FlxColor.BLACK);
 		//for (item in staffLineGroup) {
 		//	item.kill();
 		//}
@@ -718,10 +753,6 @@ class PlayState extends FlxUIState
 			if (i % timeChange.stepsPerMeasure() == 0) {
 				i = 0;
 			}
-			FlxSpriteUtil.drawLine(staffLines, FlxG.width * -0.5, y, FlxG.width * 1.5, y,
-					{color: lineColor,
-						thickness: 5});
-			/*
 			var line = staffLineGroup.recycle(() -> new Line());
 			line.color = lineColor;
 
@@ -730,7 +761,6 @@ class PlayState extends FlxUIState
 			line.updateHitbox();
 			line.x = strumLine.x;
 			line.y = y;
-			*/
 		
 			y += LINE_SPACING * 4;
 			i += 4;
@@ -786,7 +816,8 @@ class PlayState extends FlxUIState
 	private function addNote(id:Int):Void
 	{
 		if (songData == null) return;
-		var noteStrum = getStrumTime(strumLine.members[id].y);
+		if (currentSongChartNotes == null) return;
+		var noteRow = getRow(strumLine.members[id].y);
 		var noteData = id;
 		var noteSus = 0;
 		var noteKindName: Null<String> = 
@@ -798,13 +829,13 @@ class PlayState extends FlxUIState
 				// TODO
 				case key: Std.string(key);
 			};
-		var goodNote = new SongNoteData(noteStrum, noteData, noteSus, noteKindName);
+		var goodNote = new SongNoteData(noteRow, noteData, noteSus, noteKindName);
 		// prefer overloading : )
-		for (note in songChartData.notes[selectedDifficulty])
+		for (note in currentSongChartNotes)
 		{
-			if (CoolUtil.truncateFloat(note.time, 1) == CoolUtil.truncateFloat(noteStrum, 1) && note.data == noteData)
+			if (note.rowTime == noteRow && note.data == noteData)
 			{
-				songChartData.notes[selectedDifficulty].remove(note);
+				currentSongChartNotes.remove(note);
 				/*
 				if (note.kind != noteKindName && )
 				{
@@ -879,12 +910,14 @@ class PlayState extends FlxUIState
 
 	private function selectNote(id:Int):Void
 	{
-		var noteStrum = getStrumTime(strumLine.members[id].y);
+		if (songData == null) return;
+		if (currentSongChartNotes == null) return;
+		var noteRow = getRow(strumLine.members[id].y);
 		var noteData = id;
 
-		for (note in current)
+		for (note in currentSongChartNotes)
 		{
-			if (CoolUtil.truncateFloat(note.time, 1) == CoolUtil.truncateFloat(noteStrum, 1) && note.data == noteData)
+			if (note.rowTime == noteRow && note.data == noteData)
 			{
 				curSelectedNote = note;
 				// sectionInfo.visible = false;
@@ -926,6 +959,8 @@ class PlayState extends FlxUIState
 	}
 	private function handleNotes(): Void
 	{
+		if (songData == null) return;
+		if (currentSongChartNotes == null) return;
 		if (!noteDisplayDirty) return;
 
 		noteDisplayDirty = false;
@@ -943,7 +978,7 @@ class PlayState extends FlxUIState
 			}
 		}
 
-		displayedNoteData.insertionSort((a, b) -> FlxSort.byValues(FlxSort.ASCENDING, a.time, b.time));
+		displayedNoteData.insertionSort((a, b) -> FlxSort.byValues(FlxSort.ASCENDING, a.rowTime, b.rowTime));
 
 		var displayedHoldNoteData:Array<SongNoteData> = [];
 		for (holdNoteSprite in curRenderedSus.members) {
@@ -960,7 +995,7 @@ class PlayState extends FlxUIState
 				holdNoteSprite.updateHoldNotePosition();
 			}
 		}
-		displayedHoldNoteData.insertionSort((a, b) -> FlxSort.byValues(FlxSort.ASCENDING, a.time, b.time));
+		displayedHoldNoteData.insertionSort((a, b) -> FlxSort.byValues(FlxSort.ASCENDING, a.rowTime, b.rowTime));
 		for (noteData in currentSongChartNotes) {
 			if (noteData == null) continue;
 
@@ -980,11 +1015,10 @@ class PlayState extends FlxUIState
 				) {
 				final holdNoteSprite = curRenderedSus.recycle(() -> new SusNote(this));
 				noteSprite.childSus = holdNoteSprite;
-				var noteLengthPixels = noteSprite.noteData.getStepLength() * LINE_SPACING;
 
 				holdNoteSprite.noteData = noteSprite.noteData;
 
-				holdNoteSprite.setHeightDirectly(noteLengthPixels);
+				holdNoteSprite.sustainLength = noteSprite.noteData.length;
 
 				holdNoteSprite.updateHoldNotePosition();
 				noteSprite.playNoteAnimation();
@@ -1007,7 +1041,7 @@ class PlayState extends FlxUIState
 		return Math.round((yPos / LINE_SPACING) * Constants.ROWS_PER_STEP);
 	}
 	private function getYFromRow(row: Int): Float {
-		LINE_SPACING * row * Constants.ROWS_PER_STEP;
+		return LINE_SPACING * row * Constants.ROWS_PER_STEP;
 	}
 
 }

@@ -40,23 +40,6 @@ class SusNote extends SustainTrail
     origin.set(width * 0.5, height * 0.5);
   }
 
-  /**
-   * Set the height directly, to a value in pixels.
-   * @param h The desired height in pixels.
-   */
-  public function setHeightDirectly(h:Float, lerp:Bool = false)
-  {
-    if (lerp)
-    {
-      sustainLength = FlxMath.lerp(sustainLength, h / (getBaseScrollSpeed() * Constants.PIXELS_PER_MS), 0.25);
-    }
-    else
-    {
-      sustainLength = h / (getBaseScrollSpeed() * Constants.PIXELS_PER_MS);
-    }
-
-    fullSustainLength = sustainLength;
-  }
 
   #if FLX_DEBUG
   /**

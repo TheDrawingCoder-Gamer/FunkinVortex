@@ -23,13 +23,13 @@ class SongDataEditor extends TabView
 
 	private var _note(get, set):Null<SongNoteData>;
 
-	private function get_songData():SongMetadata {
+	private function get_songData():SongData {
 		return cast playstate.songData;
 	}
 
-	private function set_songData(value: SongMetadata):SongData {
+	private function set_songData(value: SongData):SongData {
 		playstate.songData = value;
-		refreshUI(playState.songData);
+		refreshUI(playstate.songData);
 		return value;
 	}
 	private function get__note():Null<SongNoteData>
@@ -48,7 +48,7 @@ class SongDataEditor extends TabView
 
 	private function get__song(): SongChartData
 	{
-		return playState.songData?.chart;
+		return playstate.songData?.chart;
 	}
 
 	private function set__song(goodSong:SongChartData):SongChartData
@@ -59,7 +59,7 @@ class SongDataEditor extends TabView
 		return goodSong;
 	}
 
-	public function refreshUI(metadata:SongDataData)
+	public function refreshUI(metadata:SongData)
 	{
 		bfText.text = metadata.playData.characters.player;
 		enemyText.text = metadata.playData.characters.opponent;

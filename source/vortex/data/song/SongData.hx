@@ -56,7 +56,7 @@ class SongData implements ICloneable<SongData>
 
   public var timeChanges:Array<SongTimeChange>;
 
-  public var chart: SongChartData;
+  public var chart: Null<SongChartData>;
 
   @:optional
   public var variation: Null<String>;
@@ -95,7 +95,7 @@ class SongData implements ICloneable<SongData>
     result.timeChanges = this.timeChanges.deepClone();
     result.playData = this.playData.clone();
     result.generatedBy = this.generatedBy;
-    result.chart = this.chart.clone();
+    result.chart = this.chart?.clone();
     result.charter = this.charter;
 
     return result;
@@ -132,7 +132,7 @@ class SongData implements ICloneable<SongData>
   }
 
   public static function fromVSlice(metadata: VSliceMetadata, chartData: VSliceChartData): SongData {
-    final babyConductor = new Conductor();
+    final babyConductor = new LegacyConductor();
     babyConductor.mapTimeChanges(metadata.timeChanges);
     final newData = new SongData(metadata.songName, metadata.artist, metadata.variation);
     newData.charter = metadata.charter;
@@ -198,6 +198,10 @@ class SongTimeChange implements ICloneable<SongTimeChange>
   @:alias("bt")
   public var beatTuplets:Array<Int>;
 
+  // Time in ms. Calculated later
+  @:jignored
+  public var time: Null<Float> = null;
+
   public function new(rowTime:Int, bpm:Float, timeSignatureNum:Int = 4, timeSignatureDen:Int = 4, ?beatTuplets:Array<Int>)
   {
     this.rowTime = rowTime;
@@ -222,9 +226,12 @@ class SongTimeChange implements ICloneable<SongTimeChange>
     return 'SongTimeChange(${this.rowTime} rows,${this.bpm}bpm)';
   }
 
-  public static function fromVSlice(conductor: Conductor, vslice: VSliceTimeChange): SongTimeChange {
+  public static function fromVSlice(conductor: LegacyConductor, vslice: VSliceTimeChange): SongTimeChange {
     final rowTime = conductor.getTimeInRows(vslice.timeStamp);
     return new SongTimeChange(rowTime, vslice.bpm, vslice.timeSignatureNum, vslice.timeSignatureDen, vslice.beatTuplets);
+  }
+  public function stepsPerMeasure(): Int {
+    return Std.int(timeSignatureNum / timeSignatureDen * Constants.STEPS_PER_BEAT * Constants.STEPS_PER_BEAT);
   }
 }
 
@@ -560,7 +567,7 @@ class SongChartData implements ICloneable<SongChartData>
     return 'SongChartData(${this.events.length} events, ${this.notes.size()} difficulties)';
   }
 
-  public static function fromVSlice(conductor: Conductor, chart: VSliceChartData): SongChartData {
+  public static function fromVSlice(conductor: LegacyConductor, chart: VSliceChartData): SongChartData {
     final noteData = new Map<String, Array<SongNoteData>>();
     for (key => notes in chart.notes) {
       noteData.set(key, [for (n in notes) SongNoteData.fromVSlice(conductor, n)]);
@@ -798,7 +805,7 @@ abstract SongEventData(SongEventDataRaw) from SongEventDataRaw to SongEventDataR
     return 'SongEventData(${this.rowTime} rows, ${this.eventKind}: ${this.value})';
   }
 
-  public static function fromVSlice(conductor: Conductor, raw: VSliceEventData): SongEventData {
+  public static function fromVSlice(conductor: LegacyConductor, raw: VSliceEventData): SongEventData {
     final rowTime = conductor.getTimeInRows(raw.time);
     return new SongEventData(rowTime, raw.eventKind, raw.value);
   }
@@ -1052,7 +1059,7 @@ abstract SongNoteData(SongNoteDataRaw) from SongNoteDataRaw to SongNoteDataRaw
     return 'SongNoteData(${this.rowTime} rows, ' + (this.length > 0 ? '[${this.length} row hold]' : '') + ' ${this.data}'
       + (this.kind != '' ? ' [kind: ${this.kind}])' : ')');
   }
-  public static function fromVSlice(conductor: Conductor, raw: VSliceNoteData): SongNoteData {
+  public static function fromVSlice(conductor: LegacyConductor, raw: VSliceNoteData): SongNoteData {
     // : )
     final rowTime = conductor.getTimeInRows(raw.time);
     final rowLength = conductor.getTimeInRows(raw.time + raw.length) - rowTime;
