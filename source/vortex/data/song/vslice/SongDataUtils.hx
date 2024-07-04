@@ -1,12 +1,12 @@
-package vortex.data.song;
+package vortex.data.song.vslice;
 
 import flixel.util.FlxSort;
-import vortex.data.song.SongData.SongTimeChange;
+import vortex.data.song.vslice.SongData.SongTimeChange;
 
 class SongDataUtils {
   public static function sortTimeChanges(timeChanges: Array<SongTimeChange>, desc: Bool = false): Array<SongTimeChange> {
     timeChanges.sort(function(a:SongTimeChange,b:SongTimeChange): Int {
-      return FlxSort.byValues(desc ? FlxSort.DESCENDING : FlxSort.ASCENDING, a.rowTime, b.rowTime);
+      return FlxSort.byValues(desc ? FlxSort.DESCENDING : FlxSort.ASCENDING, a.timeStamp, b.timeStamp);
     });
     return timeChanges;
   }
@@ -22,5 +22,9 @@ class SongDataUtils {
       }
     }
     return 0;
+  }
+  public static function quantizeNoteTime(timeChange: SongTimeChange, strum: Float): Int {
+    final beatLength = timeChange.beatLengthMs();
+    return quantizeNote(beatLength, strum);
   }
 }

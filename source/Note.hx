@@ -165,7 +165,7 @@ class Note extends FlxSprite
 
 		// 192
 		noteQuant = 10;
-		final row = Math.round(noteData.getStepTime() * Constants.ROWS_PER_STEP);
+		final row = noteData.rowTime;
 		for (quant in 0...Constants.QUANT_ARRAY.length) {
 			final daQuant = Constants.QUANT_ARRAY[quant];
 			// ???
@@ -239,7 +239,7 @@ class Note extends FlxSprite
 	}
 
 	public static function wouldNoteBeVisible(viewAreaBottom: Float, viewAreaTop: Float, noteData: SongNoteData, ?origin:FlxObject): Bool {
-		var stepTime = inline noteData.getStepTime();
+		var stepTime = noteData.rowTime / Constants.ROWS_PER_STEP;
 		var notePosY = stepTime * PlayState.LINE_SPACING;
 
 		if (origin != null) notePosY += origin.y;

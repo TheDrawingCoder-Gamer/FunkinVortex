@@ -1,7 +1,7 @@
 package;
 
-import vortex.data.song.SongData.SongTimeChange;
-import vortex.data.song.SongDataUtils;
+import vortex.data.song.vslice.SongData.SongTimeChange;
+import vortex.data.song.vslice.SongDataUtils;
 import flixel.FlxG;
 import flixel.math.FlxMath;
 
@@ -9,10 +9,8 @@ import flixel.math.FlxMath;
 
 
 
-class Conductor
+class LegacyConductor
 {
-	public static var instance(get, never):Conductor;
-	static var _instance: Null<Conductor> = null;
 	public var songPosition(default, null):Float;
 	public var lastSongPos:Float;
 	public var offset:Float = 0;
@@ -155,6 +153,11 @@ class Conductor
 			return resultStep;
 		}
 	}
+	public function getTimeInRows(ms:Float):Int 
+	{
+		final stepTime = getTimeInSteps(ms);
+		return Math.round(stepTime / Constants.ROWS_PER_STEP);
+	}
 
 	public function getStepTimeInMs(stepTime: Float): Float {
 		if (timeChanges.length == 0) {
@@ -202,11 +205,6 @@ class Conductor
 
 			return resultMs;
 		}
-	}
-	static function get_instance(): Conductor {
-		if (Conductor._instance == null) _instance = new Conductor();
-		if (Conductor._instance == null) throw "Could not initialize singleton Conductor";
-		return Conductor._instance;
 	}
 
 	

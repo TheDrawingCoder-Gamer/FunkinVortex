@@ -2,7 +2,7 @@ package;
 
 #if !macro
 import vortex.util.Constants;
-
+import flixel.FlxG;
 using Lambda;
 using StringTools;
 using vortex.util.ArrayTools;

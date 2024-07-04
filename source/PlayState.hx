@@ -45,11 +45,17 @@ import haxe.ui.focus.FocusManager;
 import haxe.ui.macros.ComponentMacros;
 import haxe.ui.styles.Style;
 import openfl.media.Sound;
-import vortex.data.song.SongData.SongMetadata;
+import vortex.data.song.SongData;
 import vortex.data.song.SongData.SongChartData;
 import vortex.data.song.SongData.SongNoteData;
 import lime.ui.FileDialogType;
 import sys.io.File;
+import vortex.audio.FunkinSound;
+import vortex.audio.VoicesGroup;
+
+import vortex.data.song.VortexC;
+import vortex.util.assets.SoundUtil;
+import haxe.io.Bytes;
 
 using StringTools;
 
@@ -94,14 +100,15 @@ typedef HoldSelect = {
 @:allow(SongDataEditor)
 class PlayState extends FlxUIState
 {
-	// TODO: Variations are almost entirely seperate songs. Should I impl them?
-	public static var songMetadata:SongMetadata = null;
-	public static var songChartData:SongChartData = null;
-	public static var selectedDifficulty:String = "normal";
-	static var currentSongChartNotes(get, never):Array<SongNoteData>;
+	public var songData:SongData = null;
+	
+	public var songId:String = "";
+	public var selectedDifficulty:String = "normal";
+	var currentSongChartNotes(get, never):Array<SongNoteData>;
 
-	static function get_currentSongChartNotes(): Array<SongNoteData> {
-		return songChartData.notes[selectedDifficulty];
+	function get_currentSongChartNotes(): Array<SongNoteData> {
+		if (songData == null) return null;
+		return songData.chart.notes[selectedDifficulty];
 	}
 	var chart:FlxSpriteGroup;
 	var staffLines:FlxSprite;
@@ -131,10 +138,12 @@ class PlayState extends FlxUIState
 	var curSectionTxt:FlxText;
 	var selectBox:FlxSprite;
 	var toolInfo:FlxText;
-	static var musicSound:Sound;
-	static var vocals:Sound;
+	public var audioInstTrack:Null<FunkinSound> = null;
+	public var vocalsGroup:VoicesGroup = new VoicesGroup();
+	public var audioInstTrackData:Null<Bytes> = null;
+	public var playerVocalTrackData:Null<Bytes> = null;
+	public var oppVocalTrackData:Null<Bytes> = null;
 	var songDataThingie:SongDataEditor;
-	var vocalSound:FlxSound;
 
 	var snapInfo:Snaps = Four;
 	var noteTypeText:FlxText;
@@ -150,13 +159,9 @@ class PlayState extends FlxUIState
 		strumLine = new FlxSpriteGroup(0, 0);
 		curRenderedNotes = new FlxTypedSpriteGroup<Note>();
 		curRenderedSus = new FlxTypedSpriteGroup<SusNote>();
-		if (songChartData == null)
-			songChartData = new SongChartData(["normal" => 1], [], ["normal" => []]);
-		if (songMetadata == null)
-			songMetadata = new SongMetadata("Test", "Unknown");
 		// make it ridulously big
 		// TODO: Camera scrolling
-		staffLines = new FlxSprite().makeGraphic(FlxG.width, Std.int((musicSound?.length ?? 6000) * LINE_SPACING), FlxColor.BLACK);
+		staffLines = new FlxSprite().makeGraphic(FlxG.width, 1000 * LINE_SPACING, FlxColor.BLACK);
 		staffLineGroup = new FlxTypedSpriteGroup<Line>();
 		staffLineGroup.setPosition(0, 0);
 		defaultLine = new Line();
@@ -186,15 +191,11 @@ class PlayState extends FlxUIState
 		saveChartMenu.text = "Save Chart";
 		saveChartMenu.onClick = function(e:MouseEvent)
 		{
-			var metadataWriter = new json2object.JsonWriter<SongMetadata>();
-			var metadataJson = metadataWriter.write(songMetadata);
-			var chartWriter = new json2object.JsonWriter<SongChartData>();
-			var chartJson = chartWriter.write(songChartData);
-
-			var future = FNFAssets.askToBrowseForPath("json", "Save Chart To...", FileDialogType.SAVE);
+			// TODO: Dialog
+			if (songData == null) return;
+			var future = FNFAssets.askToBrowseForPath("vortexc", "Save Chart To...", FileDialogType.SAVE);
 			future.onComplete(function(s: String) {
-				FNFAssets.saveContent(s, chartJson);
-				FNFAssets.saveContent(s.replace(".json", "-metadata.json"), metadataJson);
+
 			});
 		};
 		var openChartMenu = new MenuItem();
@@ -207,25 +208,27 @@ class PlayState extends FlxUIState
 		loadInstMenu.text = "Load Instrument";
 		loadInstMenu.onClick = function(e:MouseEvent)
 		{
-			var future = FNFAssets.askToBrowseForPath("ogg", "Select Instrument Tract");
+			var future = FNFAssets.askToBrowseForPath("ogg", "Select Instrument Track");
 			future.onComplete(function(s:String)
 			{
-				musicSound = Sound.fromFile(s);
-				FlxG.sound.playMusic(musicSound);
-				FlxG.sound.music.pause();
-				chartDirty = true;
-				quantizationDirty = true;
+				try {
+					audioInstTrackData = File.getBytes(s);
+					reloadInstrumental();
+					chartDirty = true;
+					quantizationDirty = true;
+				} catch (e) {
+					trace(e);
+				}
 			});
 		};
 		var loadVoiceMenu = new MenuItem();
-		loadVoiceMenu.text = "Load Vocals";
+		loadVoiceMenu.text = "Load Player Vocals";
 		loadVoiceMenu.onClick = function(e:MouseEvent)
 		{
 			var future = FNFAssets.askToBrowseForPath("ogg", "Select Voice Track");
 			future.onComplete(function(s:String)
 			{
-				vocals = Sound.fromFile(s);
-				vocalSound = FlxG.sound.load(vocals);
+				playerVocalTrackData = File.getBytes(s);
 			});
 		};
 		/*
@@ -246,7 +249,7 @@ class PlayState extends FlxUIState
 					if ((noteThingie[3] is Int))
 					{
 						if (noteThingie[3] > 0)
-							noteThingie[3] = true;
+		noteThingie[3] = true;
 						else
 							noteThingie[3] = false;
 					}
@@ -271,7 +274,7 @@ class PlayState extends FlxUIState
 		songDataThingie = new SongDataEditor(this);
 		songDataThingie.x = FlxG.width / 2;
 		songDataThingie.y = 100;
-		songDataThingie.refreshUI(songMetadata, songChartData);
+		// songDataThingie.refreshUI(songMetadata, songChartData);
 		curSnap = LINE_SPACING * 4;
 		drawChartLines();
 		updateNotes();
@@ -294,7 +297,6 @@ class PlayState extends FlxUIState
 		noteTypeText.scrollFactor.set();
 		// NOT PIXEL PERFECT
 		toolInfo.scrollFactor.set();
-		Conductor.instance.mapTimeChanges(songMetadata.timeChanges);
 		selectBox = new FlxSprite().makeGraphic(1, 1, FlxColor.GRAY);
 		selectBox.visible = false;
 		selectBox.scrollFactor.set();
@@ -323,27 +325,96 @@ class PlayState extends FlxUIState
 
 	private function loadFromFile():Void
 	{
-		var future = FNFAssets.askToBrowseForPath("json", "Select Chart Data");
+		var future = FNFAssets.askToBrowseForPath("vortexc", "Select Vortex Chart");
 		future.onComplete(function(s:String)
 		{
-			var chartReader = new json2object.JsonParser<SongChartData>();
-			var metadataReader = new json2object.JsonParser<SongMetadata>();
-
-			songChartData = chartReader.fromJson(File.getContent(s), s);
-			final metadataPath = s.replace("-chart", "-metadata");
-			songMetadata = metadataReader.fromJson(File.getContent(metadataPath), metadataPath);
-			noteDisplayDirty = true;
-			// quantizationDirty = true;
-			chartDirty = true;
-			saveDataDirty = false;
+			try {
+				final vortexc = VortexC.loadFromPath(s);
+				songData = vortexc.songData;
+				songId = vortexc.songId;
+				audioInstTrackData = vortexc.instrumental;
+				playerVocalTrackData = vortexc.playerVocals;
+				oppVocalTrackData = vortexc.opponentVocals;
+				reloadInstrumental();
+				noteDisplayDirty = true;
+				chartDirty = true;
+				saveDataDirty = false;
+			} catch (e) {
+				trace(e);
+			}
 			
 		});
 	}
 
+	private function playInstrumental(): Bool {
+		final instTrack = SoundUtil.buildSoundFromBytes(audioInstTrackData);
+		if (instTrack == null) return false;
+		
+		stopExistingInstrumental();
+		audioInstTrack = instTrack;
+		postLoadInstrumental();
 
+		FlxG.sound.list.remove(instTrack);
+
+		return true;
+
+	}
+	private function stopExistingInstrumental():Void
+	{
+		if (audioInstTrack != null)
+		{
+			FlxG.sound.music = null;
+			audioInstTrack.stop();
+			audioInstTrack.destroy();
+			audioInstTrack = null;
+		}
+	}
+	private function postLoadInstrumental():Void {
+		if (audioInstTrack != null)
+		{
+			FlxG.sound.music = audioInstTrack;
+		}
+		else
+		{
+			trace('ERROR: Instrumental track is null!');
+		}
+		chartDirty = true;
+	}
+	private function playVocals(isDaddy: Bool): Bool {
+		final track = if (isDaddy) oppVocalTrackData else playerVocalTrackData;
+		final vocalTrack = SoundUtil.buildSoundsFromBytes(track);
+
+		if (vocalTrack != null) {
+			if (isDaddy) {
+				audioVocalTrackGroup.addOpponentVoice(vocalTrack);
+			} else {
+				audioVocalTrackGroup.addPlayerVoice(vocalTrack);
+			}
+			return true;
+		}
+
+		return false;
+	}
+	// reloads the songs instrumental n stuff
+	private function reloadInstrumental():Bool {
+		var result = playInstrumental();
+		if (!result) return false;
+
+		stopExistingVocals();
+
+		result = playVocals(false);
+
+		result = playVocals(true);
+
+		// refresh other bits
+		chartDirty = true;
+	}
+	private function stopExistingVocals():Void {
+		audioVocalTrackGroup.clear();
+	}
 	var selecting:Bool = false;
 
-override public function update(elapsed:Float)
+	override public function update(elapsed:Float)
 	{
 		super.update(elapsed);
 		noteControls = [
@@ -632,8 +703,8 @@ override public function update(elapsed:Float)
 
 	private function drawChartLines()
 	{
-		if (musicSound == null) return;
-		final bottom = getYfromStrum(musicSound.length);
+		if (audioInstTrack == null) return;
+		final bottom = getYfromStrum(audioInstTrack.length);
 		staffLines.makeGraphic(FlxG.width, Std.int(bottom) + 10, FlxColor.BLACK);
 		//for (item in staffLineGroup) {
 		//	item.kill();
@@ -665,7 +736,9 @@ override public function update(elapsed:Float)
 			i += 4;
 		}
 	}
+	function refreshChart() {
 
+	}
 	/*
 	function convertToRoll(id:Int)
 	{
@@ -712,6 +785,7 @@ override public function update(elapsed:Float)
 
 	private function addNote(id:Int):Void
 	{
+		if (songData == null) return;
 		var noteStrum = getStrumTime(strumLine.members[id].y);
 		var noteData = id;
 		var noteSus = 0;
@@ -808,7 +882,7 @@ override public function update(elapsed:Float)
 		var noteStrum = getStrumTime(strumLine.members[id].y);
 		var noteData = id;
 
-		for (note in songChartData.notes[selectedDifficulty])
+		for (note in current)
 		{
 			if (CoolUtil.truncateFloat(note.time, 1) == CoolUtil.truncateFloat(noteStrum, 1) && note.data == noteData)
 			{
@@ -931,6 +1005,9 @@ override public function update(elapsed:Float)
 	// Get the nearest row
 	private function getRow(yPos:Float): Int {
 		return Math.round((yPos / LINE_SPACING) * Constants.ROWS_PER_STEP);
+	}
+	private function getYFromRow(row: Int): Float {
+		LINE_SPACING * row * Constants.ROWS_PER_STEP;
 	}
 
 }

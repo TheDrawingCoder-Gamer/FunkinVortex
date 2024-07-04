@@ -23,7 +23,7 @@ class SongNoteDataArrayTools
 
     // Prefix with some simple checks to save time.
     if (input.length == 0) return -1;
-    if (note.time < input[0].time || note.time > input[input.length - 1].time) return -1;
+    if (note.rowTime < input[0].rowTime || note.rowTime > input[input.length - 1].rowTime) return -1;
 
     // Thank you Github Copilot for suggesting a binary search!
     var lowIndex:Int = 0;
@@ -38,12 +38,12 @@ class SongNoteDataArrayTools
       // Compare the middle note of the range to the note we're looking for.
       // If it matches, return the index, else halve the range and try again.
       var midNote = input[midIndex];
-      if (midNote.time < note.time)
+      if (midNote.rowTime < note.rowTime)
       {
         // Search the upper half of the range.
         lowIndex = midIndex + 1;
       }
-      else if (midNote.time > note.time)
+      else if (midNote.rowTime > note.rowTime)
       {
         // Search the lower half of the range.
         highIndex = midIndex - 1;

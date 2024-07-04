@@ -1,25 +1,30 @@
 // stolen from V-Slice https://github.com/FunkinCrew/Funkin/blob/main/source/funkin/data/song/SongData.hx
 
-package vortex.data.song;
+package vortex.data.song.vslice;
 
 #if !macro
 import thx.semver.Version;
 import thx.semver.VersionRule;
 import vortex.util.ICloneable;
-import vortex.data.song.vslice.SongData.SongChartData in VSliceChartData;
-import vortex.data.song.vslice.SongData.SongMetadata in VSliceMetadata;
-import vortex.data.song.vslice.SongData.SongTimeChange in VSliceTimeChange;
-import vortex.data.song.vslice.SongData.SongEventData in VSliceEventData;
-import vortex.data.song.vslice.SongData.SongNoteData in VSliceNoteData;
-import vortex.data.song.vslice.SongData.SongPlayData in VSlicePlayData;
+import vortex.data.song.SongData.SongOffsets;
+import vortex.data.song.SongData.SongCharacterData;
 #end
 
 class SongConstants {
-  public static final SONG_DATA_VERSION: Version = "1.0.0";
-  public static final SONG_DATA_VERSION_RULE: VersionRule = "1.0.x";
+  public static final SONG_METADATA_VERSION: Version = "2.2.3";
+  public static final SONG_METADATA_VERSION_RULE: VersionRule = "2.2.x";
+  public static final SONG_CHART_DATA_VERSION: Version = "2.0.0";
+  public static final SONG_CHART_DATA_VERSION_RULE: VersionRule = "2.0.x";
+  public static final SONG_MUSIC_DATA_VERSION: Version = "2.0.0";
+  public static final SONG_MUSIC_DATA_VERSION_RULE: VersionRule = "2.0.x";
 }
+/**
+ * Data containing information about a song.
+ * It should contain all the data needed to display a song in the Freeplay menu, or to load the assets required to play its chart.
+ * Data which is only necessary in-game should be stored in the SongChartData.
+ */
 @:nullSafety
-class SongData implements ICloneable<SongData>
+class SongMetadata implements ICloneable<SongMetadata>
 {
   /**
    * A semantic versioning string for the song data format.
@@ -39,6 +44,14 @@ class SongData implements ICloneable<SongData>
   @:optional
   public var charter:Null<String> = null;
 
+  @:optional
+  @:default(96)
+  public var divisions:Null<Int>; // Optional field
+
+  @:optional
+  @:default(false)
+  public var looped:Bool;
+
   /**
    * Instrumental and vocal offsets.
    * Defaults to an empty SongOffsets object.
@@ -54,22 +67,29 @@ class SongData implements ICloneable<SongData>
   @:default(vortex.util.Constants.GENERATED_BY)
   public var generatedBy:String;
 
+  @:optional
+  @:default(vortex.data.song.vslice.SongData.SongTimeFormat.MILLISECONDS)
+  public var timeFormat:SongTimeFormat;
+
   public var timeChanges:Array<SongTimeChange>;
 
-  public var chart: SongChartData;
 
-  @:optional
-  public var variation: Null<String>;
-
-
+  /**
+   * Defaults to `Constants.DEFAULT_VARIATION`. Populated later.
+   */
+  @:jignored
+  public var variation:String;
 
   public function new(songName:String, artist:String, ?variation:String)
   {
-    this.version = SongConstants.SONG_DATA_VERSION;
+    this.version = SongConstants.SONG_METADATA_VERSION;
     this.songName = songName;
     this.artist = artist;
+    this.timeFormat = 'ms';
+    this.divisions = null;
     this.offsets = new SongOffsets();
     this.timeChanges = [new SongTimeChange(0, 100)];
+    this.looped = false;
     this.playData = new SongPlayData();
     this.playData.songVariations = [];
     this.playData.difficulties = [];
@@ -79,7 +99,6 @@ class SongData implements ICloneable<SongData>
     this.generatedBy = Constants.GENERATED_BY;
     // Variation ID.
     this.variation = (variation == null) ? Constants.DEFAULT_VARIATION : variation;
-    this.chart = null;
   }
 
   /**
@@ -87,16 +106,17 @@ class SongData implements ICloneable<SongData>
    * @param newVariation Set to a new variation ID to change the new metadata.
    * @return The cloned SongMetadata
    */
-  public function clone():SongData
+  public function clone():SongMetadata
   {
-    var result:SongData = new SongData(this.songName, this.artist, this.variation);
+    var result:SongMetadata = new SongMetadata(this.songName, this.artist, this.variation);
     result.version = this.version;
+    result.timeFormat = this.timeFormat;
+    result.divisions = this.divisions;
     result.offsets = this.offsets != null ? this.offsets.clone() : new SongOffsets(); // if no song offsets found (aka null), so just create new ones
     result.timeChanges = this.timeChanges.deepClone();
+    result.looped = this.looped;
     result.playData = this.playData.clone();
     result.generatedBy = this.generatedBy;
-    result.chart = this.chart.clone();
-    result.charter = this.charter;
 
     return result;
   }
@@ -113,42 +133,38 @@ class SongData implements ICloneable<SongData>
     updateVersionToLatest();
 
     var ignoreNullOptionals = true;
-    var writer = new json2object.JsonWriter<SongData>(ignoreNullOptionals);
+    var writer = new json2object.JsonWriter<SongMetadata>(ignoreNullOptionals);
     // I believe @:jignored should be ignored by the writer?
     // var output = this.clone();
     // output.variation = null; // Not sure how to make a field optional on the reader and ignored on the writer.
     return writer.write(this, pretty ? '  ' : null);
   }
 
-  public function updateVersionToLatest():Void
-  {
-    this.version = SongConstants.SONG_DATA_VERSION;
-    this.generatedBy = Constants.GENERATED_BY;
-  }
-
-  public static function deserialize(json: String): SongData {
-    final reader = new json2object.JsonParser<SongData>();
+  public static function deserialize(json: String): SongMetadata {
+    final reader = new json2object.JsonParser<SongMetadata>();
     return reader.fromJson(json);
   }
 
-  public static function fromVSlice(metadata: VSliceMetadata, chartData: VSliceChartData): SongData {
-    final babyConductor = new Conductor();
-    babyConductor.mapTimeChanges(metadata.timeChanges);
-    final newData = new SongData(metadata.songName, metadata.artist, metadata.variation);
-    newData.charter = metadata.charter;
-    newData.offsets = metadata.offsets?.clone() ?? new SongOffsets();
-    newData.timeChanges = [for (m in metadata.timeChanges) SongTimeChange.fromVSlice(babyConductor, m)];
-    newData.playData = SongPlayData.fromVSlice(metadata.playData);
-    newData.chart = SongChartData.fromVSlice(babyConductor, chartData);
-    return newData;
+  public function updateVersionToLatest():Void
+  {
+    this.version = SongConstants.SONG_METADATA_VERSION;
+    this.generatedBy = Constants.GENERATED_BY;
   }
+
   /**
    * Produces a string representation suitable for debugging.
    */
   public function toString():String
   {
-    return 'SongData(${this.songName} by ${this.artist}, variation ${this.variation})';
+    return 'SongMetadata(${this.songName} by ${this.artist}, variation ${this.variation})';
   }
+}
+
+enum abstract SongTimeFormat(String) from String to String
+{
+  var TICKS = 'ticks';
+  var FLOAT = 'float';
+  var MILLISECONDS = 'ms';
 }
 
 class SongTimeChange implements ICloneable<SongTimeChange>
@@ -161,10 +177,18 @@ class SongTimeChange implements ICloneable<SongTimeChange>
   static final DEFAULT_BEAT_TIME:Null<Float> = null; // Later, null gets detected and recalculated.
 
   /**
-    * The "row" of a time change
-    */
+   * Timestamp in specified `timeFormat`.
+   */
   @:alias("t")
-  public var rowTime:Int;
+  public var timeStamp:Float;
+
+  /**
+   * Time in beats (int). The game will calculate further beat values based on this one,
+   * so it can do it in a simple linear fashion.
+   */
+  @:optional
+  @:alias("b")
+  public var beatTime:Float;
 
   /**
    * Quarter notes per minute (float). Cannot be empty in the first element of the list,
@@ -198,20 +222,31 @@ class SongTimeChange implements ICloneable<SongTimeChange>
   @:alias("bt")
   public var beatTuplets:Array<Int>;
 
-  public function new(rowTime:Int, bpm:Float, timeSignatureNum:Int = 4, timeSignatureDen:Int = 4, ?beatTuplets:Array<Int>)
+  public function new(timeStamp:Float, bpm:Float, timeSignatureNum:Int = 4, timeSignatureDen:Int = 4, ?beatTime:Float, ?beatTuplets:Array<Int>)
   {
-    this.rowTime = rowTime;
+    this.timeStamp = timeStamp;
     this.bpm = bpm;
 
     this.timeSignatureNum = timeSignatureNum;
     this.timeSignatureDen = timeSignatureDen;
 
+    this.beatTime = beatTime == null ? DEFAULT_BEAT_TIME : beatTime;
     this.beatTuplets = beatTuplets == null ? DEFAULT_BEAT_TUPLETS : beatTuplets;
   }
 
   public function clone():SongTimeChange
   {
-    return new SongTimeChange(this.rowTime, this.bpm, this.timeSignatureNum, this.timeSignatureDen, this.beatTuplets);
+    return new SongTimeChange(this.timeStamp, this.bpm, this.timeSignatureNum, this.timeSignatureDen, this.beatTime, this.beatTuplets);
+  }
+
+  public function stepsPerMeasure(): Int {
+    return Std.int(timeSignatureNum / timeSignatureDen * Constants.STEPS_PER_BEAT * Constants.STEPS_PER_BEAT);
+  }
+  public function beatLengthMs(): Float {
+    return ((Constants.SECS_PER_MINUTE / bpm) * Constants.MS_PER_SEC);
+  }
+  public function measureLengthMs(): Float {
+    return beatLengthMs() * timeSignatureNum;
   }
 
   /**
@@ -219,95 +254,83 @@ class SongTimeChange implements ICloneable<SongTimeChange>
    */
   public function toString():String
   {
-    return 'SongTimeChange(${this.rowTime} rows,${this.bpm}bpm)';
-  }
-
-  public static function fromVSlice(conductor: Conductor, vslice: VSliceTimeChange): SongTimeChange {
-    final rowTime = conductor.getTimeInRows(vslice.timeStamp);
-    return new SongTimeChange(rowTime, vslice.bpm, vslice.timeSignatureNum, vslice.timeSignatureDen, vslice.beatTuplets);
+    return 'SongTimeChange(${this.timeStamp}ms,${this.bpm}bpm)';
   }
 }
 
 /**
- * Offsets to apply to the song's instrumental and vocals, relative to the chart.
- * These are intended to correct for issues with the chart, or with the song's audio (for example a 10ms delay before the song starts).
- * This is independent of the offsets applied in the user's settings, which are applied after these offsets and intended to correct for the user's hardware.
+ * Metadata for a song only used for the music.
+ * For example, the menu music.
  */
-class SongOffsets implements ICloneable<SongOffsets>
+class SongMusicData implements ICloneable<SongMusicData>
 {
   /**
-   * The offset, in milliseconds, to apply to the song's instrumental relative to the chart.
-   * For example, setting this to `-10.0` will start the instrumental 10ms earlier than the chart.
+   * A semantic versioning string for the song data format.
    *
-   * Setting this to `-5000.0` means the chart start 5 seconds into the song.
-   * Setting this to `5000.0` means there will be 5 seconds of silence before the song starts.
    */
+  // @:default(funkin.data.song.SongRegistry.SONG_METADATA_VERSION)
+  @:jcustomparse(vortex.data.DataParse.semverVersion)
+  @:jcustomwrite(vortex.data.DataWrite.semverVersion)
+  public var version:Version;
+
+  @:default("Unknown")
+  public var songName:String;
+
+  @:default("Unknown")
+  public var artist:String;
+
   @:optional
-  @:default(0)
-  public var instrumental:Float;
+  @:default(96)
+  public var divisions:Null<Int>; // Optional field
+
+  @:optional
+  @:default(false)
+  public var looped:Null<Bool>;
+
+  // @:default(funkin.data.song.SongRegistry.DEFAULT_GENERATEDBY)
+  public var generatedBy:String;
+
+  // @:default(funkin.data.song.SongData.SongTimeFormat.MILLISECONDS)
+  public var timeFormat:SongTimeFormat;
+
+  // @:default(funkin.data.song.SongData.SongTimeChange.DEFAULT_SONGTIMECHANGES)
+  public var timeChanges:Array<SongTimeChange>;
 
   /**
-   * Apply different offsets to different alternate instrumentals.
+   * Defaults to `Constants.DEFAULT_VARIATION`. Populated later.
    */
-  @:optional
-  @:default([])
-  public var altInstrumentals:Map<String, Float>;
+  @:jignored
+  public var variation:String;
 
-  /**
-   * The offset, in milliseconds, to apply to the song's vocals, relative to the chart.
-   * These are applied ON TOP OF the instrumental offset.
-   */
-  @:optional
-  @:default([])
-  public var vocals:Map<String, Float>;
-
-  public function new(instrumental:Float = 0.0, ?altInstrumentals:Map<String, Float>, ?vocals:Map<String, Float>)
+  public function new(songName:String, artist:String, variation:String = 'default')
   {
-    this.instrumental = instrumental;
-    this.altInstrumentals = altInstrumentals == null ? new Map<String, Float>() : altInstrumentals;
-    this.vocals = vocals == null ? new Map<String, Float>() : vocals;
+    this.version = SongConstants.SONG_CHART_DATA_VERSION;
+    this.songName = songName;
+    this.artist = artist;
+    this.timeFormat = 'ms';
+    this.divisions = null;
+    this.timeChanges = [new SongTimeChange(0, 100)];
+    this.looped = false;
+    this.generatedBy = Constants.GENERATED_BY;
+    // Variation ID.
+    this.variation = variation == null ? Constants.DEFAULT_VARIATION : variation;
   }
 
-  public function getInstrumentalOffset(?instrumental:String):Float
+  public function updateVersionToLatest():Void
   {
-    if (instrumental == null || instrumental == '') return this.instrumental;
-
-    if (!this.altInstrumentals.exists(instrumental)) return this.instrumental;
-
-    return this.altInstrumentals.get(instrumental);
+    this.version = SongConstants.SONG_MUSIC_DATA_VERSION;
+    this.generatedBy = Constants.GENERATED_BY;
   }
 
-  public function setInstrumentalOffset(value:Float, ?instrumental:String):Float
+  public function clone():SongMusicData
   {
-    if (instrumental == null || instrumental == '')
-    {
-      this.instrumental = value;
-    }
-    else
-    {
-      this.altInstrumentals.set(instrumental, value);
-    }
-    return value;
-  }
-
-  public function getVocalOffset(charId:String):Float
-  {
-    if (!this.vocals.exists(charId)) return 0.0;
-
-    return this.vocals.get(charId);
-  }
-
-  public function setVocalOffset(charId:String, value:Float):Float
-  {
-    this.vocals.set(charId, value);
-    return value;
-  }
-
-  public function clone():SongOffsets
-  {
-    var result:SongOffsets = new SongOffsets(this.instrumental);
-    result.altInstrumentals = this.altInstrumentals.clone();
-    result.vocals = this.vocals.clone();
+    var result:SongMusicData = new SongMusicData(this.songName, this.artist, this.variation);
+    result.version = this.version;
+    result.timeFormat = this.timeFormat;
+    result.divisions = this.divisions;
+    result.timeChanges = this.timeChanges.clone();
+    result.looped = this.looped;
+    result.generatedBy = this.generatedBy;
 
     return result;
   }
@@ -317,7 +340,7 @@ class SongOffsets implements ICloneable<SongOffsets>
    */
   public function toString():String
   {
-    return 'SongOffsets(${this.instrumental}ms, ${this.altInstrumentals}, ${this.vocals})';
+    return 'SongMusicData(${this.songName} by ${this.artist}, variation ${this.variation})';
   }
 }
 
@@ -358,10 +381,6 @@ class SongPlayData implements ICloneable<SongPlayData>
   @:default(['normal' => 0])
   public var ratings:Map<String, Int>;
 
-  @:optional
-  @:default(['normal' => 0])
-  public var stepmaniaRatings:Map<String, Float>;
-
   /**
    * The album ID for the album to display in Freeplay.
    * If `null`, display no album.
@@ -390,7 +409,6 @@ class SongPlayData implements ICloneable<SongPlayData>
   public function new()
   {
     ratings = new Map<String, Int>();
-    stepmaniaRatings = new Map<String, Float>();
   }
 
   public function clone():SongPlayData
@@ -417,81 +435,21 @@ class SongPlayData implements ICloneable<SongPlayData>
   {
     return 'SongPlayData(${this.songVariations}, ${this.difficulties})';
   }
-
-  public static function fromVSlice(raw: VSlicePlayData): SongPlayData {
-    final result = new SongPlayData();
-    result.songVariations = raw.songVariations.clone();
-    result.difficulties = raw.difficulties.clone();
-    result.characters = raw.characters.clone();
-    result.stage = raw.stage;
-    result.noteStyle = raw.noteStyle;
-    result.album = raw.album;
-    result.previewStart = raw.previewStart;
-    result.ratings = raw.ratings.clone();
-    for (key => _ in raw.ratings) {
-      result.stepmaniaRatings.set(key, 0);
-    }
-
-    return result;
-  }
-}
-
-/**
- * Information about the characters used in this variation of the song.
- * Create a new variation if you want to change the characters.
- */
-class SongCharacterData implements ICloneable<SongCharacterData>
-{
-  @:optional
-  @:default('')
-  public var player:String = '';
-
-  @:optional
-  @:default('')
-  public var girlfriend:String = '';
-
-  @:optional
-  @:default('')
-  public var opponent:String = '';
-
-  @:optional
-  @:default('')
-  public var instrumental:String = '';
-
-  @:optional
-  @:default([])
-  public var altInstrumentals:Array<String> = [];
-
-  public function new(player:String = '', girlfriend:String = '', opponent:String = '', instrumental:String = '')
-  {
-    this.player = player;
-    this.girlfriend = girlfriend;
-    this.opponent = opponent;
-    this.instrumental = instrumental;
-  }
-
-  public function clone():SongCharacterData
-  {
-    var result:SongCharacterData = new SongCharacterData(this.player, this.girlfriend, this.opponent, this.instrumental);
-    result.altInstrumentals = this.altInstrumentals.clone();
-
-    return result;
-  }
-
-  /**
-   * Produces a string representation suitable for debugging.
-   */
-  public function toString():String
-  {
-    return 'SongCharacterData(${this.player}, ${this.girlfriend}, ${this.opponent}, ${this.instrumental}, [${this.altInstrumentals.join(', ')}])';
-  }
 }
 
 class SongChartData implements ICloneable<SongChartData>
 {
+  @:default(vortex.data.song.vslice.SongData.SongConstants.SONG_CHART_DATA_VERSION)
+  @:jcustomparse(vortex.data.DataParse.semverVersion)
+  @:jcustomwrite(vortex.data.DataWrite.semverVersion)
+  public var version:Version;
+
   public var scrollSpeed:Map<String, Float>;
   public var events:Array<SongEventData>;
   public var notes:Map<String, Array<SongNoteData>>;
+
+  @:default(vortex.util.Constants.GENERATED_BY)
+  public var generatedBy:String;
 
   /**
    * Defaults to `Constants.DEFAULT_VARIATION`. Populated later.
@@ -501,9 +459,13 @@ class SongChartData implements ICloneable<SongChartData>
 
   public function new(scrollSpeed:Map<String, Float>, events:Array<SongEventData>, notes:Map<String, Array<SongNoteData>>)
   {
+    this.version = SongConstants.SONG_CHART_DATA_VERSION;
+
     this.events = events;
     this.notes = notes;
     this.scrollSpeed = scrollSpeed;
+
+    this.generatedBy = Constants.GENERATED_BY;
   }
 
   public function getScrollSpeed(diff:String = 'default'):Float
@@ -536,6 +498,31 @@ class SongChartData implements ICloneable<SongChartData>
     return value;
   }
 
+  /**
+   * Convert this SongChartData into a JSON string.
+   */
+  public function serialize(pretty:Bool = true):String
+  {
+    // Update generatedBy and version before writing.
+    updateVersionToLatest();
+
+    var ignoreNullOptionals = true;
+    var writer = new json2object.JsonWriter<SongChartData>(ignoreNullOptionals);
+    return writer.write(this, pretty ? '  ' : null);
+  }
+
+  public static function deserialize(json: String): SongChartData {
+    final reader = new json2object.JsonParser<SongChartData>();
+    return reader.fromJson(json);
+  }
+
+  public function updateVersionToLatest():Void
+  {
+    // freaky ???
+    this.version = SongConstants.SONG_CHART_DATA_VERSION;
+    this.generatedBy = Constants.GENERATED_BY;
+  }
+
   public function clone():SongChartData
   {
     // We have to manually perform the deep clone here because Map.deepClone() doesn't work.
@@ -547,6 +534,8 @@ class SongChartData implements ICloneable<SongChartData>
     var eventDataClone:Array<SongEventData> = this.events.deepClone();
 
     var result:SongChartData = new SongChartData(this.scrollSpeed.clone(), eventDataClone, noteDataClone);
+    result.version = this.version;
+    result.generatedBy = this.generatedBy;
     result.variation = this.variation;
 
     return result;
@@ -557,21 +546,7 @@ class SongChartData implements ICloneable<SongChartData>
    */
   public function toString():String
   {
-    return 'SongChartData(${this.events.length} events, ${this.notes.size()} difficulties)';
-  }
-
-  public static function fromVSlice(conductor: Conductor, chart: VSliceChartData): SongChartData {
-    final noteData = new Map<String, Array<SongNoteData>>();
-    for (key => notes in chart.notes) {
-      noteData.set(key, [for (n in notes) SongNoteData.fromVSlice(conductor, n)]);
-    }
-    final eventData:Array<SongEventData> = [];
-    for (event in chart.events) {
-      eventData.push(SongEventData.fromVSlice(conductor, event));
-    }
-    final res = new SongChartData(chart.scrollSpeed.clone(), eventData, noteData);
-    res.variation = chart.variation;
-    return res;
+    return 'SongChartData(${this.events.length} events, ${this.notes.size()} difficulties, ${generatedBy})';
   }
 }
 
@@ -581,7 +556,13 @@ class SongEventDataRaw implements ICloneable<SongEventDataRaw>
    * The timestamp of the event. The timestamp is in the format of the song's time format.
    */
   @:alias("t")
-  public var rowTime:Int;
+  public var time(default, set):Float;
+
+  function set_time(value:Float):Float
+  {
+    _stepTime = null;
+    return time = value;
+  }
 
   /**
    * The kind of the event.
@@ -609,32 +590,36 @@ class SongEventDataRaw implements ICloneable<SongEventDataRaw>
   @:jignored
   public var activated:Bool = false;
 
-  public function new(time:Int, eventKind:String, value:Dynamic = null)
+  public function new(time:Float, eventKind:String, value:Dynamic = null)
   {
-    this.rowTime = time;
+    this.time = time;
     this.eventKind = eventKind;
     this.value = value;
   }
 
+  @:jignored
+  var _stepTime:Null<Float> = null;
+
   public function getStepTime(force:Bool = false):Float
   {
+    if (_stepTime != null && !force) return _stepTime;
 
-    return rowTime / Constants.ROWS_PER_STEP;
+    return _stepTime = Conductor.instance.getTimeInSteps(this.time);
   }
 
   public function clone():SongEventDataRaw
   {
-    return new SongEventDataRaw(this.rowTime, this.eventKind, this.value);
+    return new SongEventDataRaw(this.time, this.eventKind, this.value);
   }
 }
 
 /**
  * Wrap SongEventData in an abstract so we can overload operators.
  */
-@:forward(rowTime, eventKind, value, activated, getStepTime, clone)
+@:forward(time, eventKind, value, activated, getStepTime, clone)
 abstract SongEventData(SongEventDataRaw) from SongEventDataRaw to SongEventDataRaw
 {
-  public function new(time:Int, eventKind:String, value:Dynamic = null)
+  public function new(time:Float, eventKind:String, value:Dynamic = null)
   {
     this = new SongEventDataRaw(time, eventKind, value);
   }
@@ -751,43 +736,43 @@ abstract SongEventData(SongEventDataRaw) from SongEventDataRaw to SongEventDataR
 
   public function clone():SongEventData
   {
-    return new SongEventData(this.rowTime, this.eventKind, this.value);
+    return new SongEventData(this.time, this.eventKind, this.value);
   }
 
   @:op(A == B)
   public function op_equals(other:SongEventData):Bool
   {
-    return this.rowTime == other.rowTime && this.eventKind == other.eventKind && this.value == other.value;
+    return this.time == other.time && this.eventKind == other.eventKind && this.value == other.value;
   }
 
   @:op(A != B)
   public function op_notEquals(other:SongEventData):Bool
   {
-    return this.rowTime != other.rowTime || this.eventKind != other.eventKind || this.value != other.value;
+    return this.time != other.time || this.eventKind != other.eventKind || this.value != other.value;
   }
 
   @:op(A > B)
   public function op_greaterThan(other:SongEventData):Bool
   {
-    return this.rowTime > other.rowTime;
+    return this.time > other.time;
   }
 
   @:op(A < B)
   public function op_lessThan(other:SongEventData):Bool
   {
-    return this.rowTime < other.rowTime;
+    return this.time < other.time;
   }
 
   @:op(A >= B)
   public function op_greaterThanOrEquals(other:SongEventData):Bool
   {
-    return this.rowTime >= other.rowTime;
+    return this.time >= other.time;
   }
 
   @:op(A <= B)
   public function op_lessThanOrEquals(other:SongEventData):Bool
   {
-    return this.rowTime <= other.rowTime;
+    return this.time <= other.time;
   }
 
   /**
@@ -795,23 +780,23 @@ abstract SongEventData(SongEventDataRaw) from SongEventDataRaw to SongEventDataR
    */
   public function toString():String
   {
-    return 'SongEventData(${this.rowTime} rows, ${this.eventKind}: ${this.value})';
-  }
-
-  public static function fromVSlice(conductor: Conductor, raw: VSliceEventData): SongEventData {
-    final rowTime = conductor.getTimeInRows(raw.time);
-    return new SongEventData(rowTime, raw.eventKind, raw.value);
+    return 'SongEventData(${this.time}ms, ${this.eventKind}: ${this.value})';
   }
 }
 
 class SongNoteDataRaw implements ICloneable<SongNoteDataRaw>
 {
   /**
-   * The timestamp of the note. The timestamp is in the 192nds of a measure (rows)
+   * The timestamp of the note. The timestamp is in the format of the song's time format.
    */
   @:alias("t")
-  public var rowTime:Int;
+  public var time(default, set):Float;
 
+  function set_time(value:Float):Float
+  {
+    _stepTime = null;
+    return time = value;
+  }
 
   /**
    * Data for the note. Represents the index on the strumline.
@@ -829,8 +814,13 @@ class SongNoteDataRaw implements ICloneable<SongNoteDataRaw>
   @:alias("l")
   @:default(0)
   @:optional
-  public var length:Int;
+  public var length(default, set):Float;
 
+  function set_length(value:Float):Float
+  {
+    _stepLength = null;
+    return length = value;
+  }
 
   /**
    * The kind of the note.
@@ -855,9 +845,9 @@ class SongNoteDataRaw implements ICloneable<SongNoteDataRaw>
     return this.kind = value;
   }
 
-  public function new(time:Int, data:Int, length:Int = 0, kind:String = '')
+  public function new(time:Float, data:Int, length:Float = 0, kind:String = '')
   {
-    this.rowTime = time;
+    this.time = time;
     this.data = data;
     this.length = length;
     this.kind = kind;
@@ -901,14 +891,27 @@ class SongNoteDataRaw implements ICloneable<SongNoteDataRaw>
     return getStrumlineIndex(strumlineSize) == 0;
   }
 
+  @:jignored
+  var _stepTime:Null<Float> = null;
+
   /**
    * @param force Set to `true` to force recalculation (good after BPM changes)
    * @return The position of the note in the song, in steps.
    */
   public function getStepTime(force:Bool = false):Float
   {
-    return rowTime / Constants.ROWS_PER_STEP;
+    if (_stepTime != null && !force) return _stepTime;
+
+    return _stepTime = Conductor.instance.getTimeInSteps(this.time);
   }
+
+  /**
+   * The length of the note, if applicable, in steps.
+   * Calculated from the length and the BPM.
+   * Cached for performance. Set to `null` to recalculate.
+   */
+  @:jignored
+  var _stepLength:Null<Float> = null;
 
   /**
    * @param force Set to `true` to force recalculation (good after BPM changes)
@@ -918,17 +921,38 @@ class SongNoteDataRaw implements ICloneable<SongNoteDataRaw>
   {
     if (this.length <= 0) return 0.0;
 
-    return length / Constants.ROWS_PER_STEP;
+    if (_stepLength != null && !force) return _stepLength;
+
+    return _stepLength = Conductor.instance.getTimeInSteps(this.time + this.length) - getStepTime();
+  }
+
+  public function setStepLength(value:Float):Void
+  {
+    if (value <= 0)
+    {
+      this.length = 0.0;
+    }
+    else
+    {
+      var endStep:Float = getStepTime() + value;
+      var endMs:Float = Conductor.instance.getStepTimeInMs(endStep);
+      var lengthMs:Float = endMs - this.time;
+
+      this.length = lengthMs;
+    }
+
+    // Recalculate the step length next time it's requested.
+    _stepLength = null;
   }
 
   public function clone():SongNoteDataRaw
   {
-    return new SongNoteDataRaw(this.rowTime, this.data, this.length, this.kind);
+    return new SongNoteDataRaw(this.time, this.data, this.length, this.kind);
   }
 
   public function toString():String
   {
-    return 'SongNoteData(${this.rowTime} rows, ' + (this.length > 0 ? '[${this.length}ms hold]' : '') + ' ${this.data}'
+    return 'SongNoteData(${this.time}ms, ' + (this.length > 0 ? '[${this.length}ms hold]' : '') + ' ${this.data}'
       + (this.kind != '' ? ' [kind: ${this.kind}])' : ')');
   }
 }
@@ -939,7 +963,7 @@ class SongNoteDataRaw implements ICloneable<SongNoteDataRaw>
 @:forward
 abstract SongNoteData(SongNoteDataRaw) from SongNoteDataRaw to SongNoteDataRaw
 {
-  public function new(time:Int, data:Int, length:Int = 0, kind:String = '')
+  public function new(time:Float, data:Int, length:Float = 0, kind:String = '')
   {
     this = new SongNoteDataRaw(time, data, length, kind);
   }
@@ -985,7 +1009,7 @@ abstract SongNoteData(SongNoteDataRaw) from SongNoteDataRaw to SongNoteDataRaw
       if (other.kind == '' || this.kind == null) return false;
     }
 
-    return this.rowTime == other.rowTime && this.data == other.data && this.length == other.length;
+    return this.time == other.time && this.data == other.data && this.length == other.length;
   }
 
   @:op(A != B)
@@ -1004,7 +1028,7 @@ abstract SongNoteData(SongNoteDataRaw) from SongNoteDataRaw to SongNoteDataRaw
       if (other.kind == '') return true;
     }
 
-    return this.rowTime != other.rowTime || this.data != other.data || this.length != other.length;
+    return this.time != other.time || this.data != other.data || this.length != other.length;
   }
 
   @:op(A > B)
@@ -1012,7 +1036,7 @@ abstract SongNoteData(SongNoteDataRaw) from SongNoteDataRaw to SongNoteDataRaw
   {
     if (other == null) return false;
 
-    return this.rowTime > other.rowTime;
+    return this.time > other.time;
   }
 
   @:op(A < B)
@@ -1020,7 +1044,7 @@ abstract SongNoteData(SongNoteDataRaw) from SongNoteDataRaw to SongNoteDataRaw
   {
     if (other == null) return false;
 
-    return this.rowTime < other.rowTime;
+    return this.time < other.time;
   }
 
   @:op(A >= B)
@@ -1028,7 +1052,7 @@ abstract SongNoteData(SongNoteDataRaw) from SongNoteDataRaw to SongNoteDataRaw
   {
     if (other == null) return false;
 
-    return this.rowTime >= other.rowTime;
+    return this.time >= other.time;
   }
 
   @:op(A <= B)
@@ -1036,12 +1060,12 @@ abstract SongNoteData(SongNoteDataRaw) from SongNoteDataRaw to SongNoteDataRaw
   {
     if (other == null) return false;
 
-    return this.rowTime <= other.rowTime;
+    return this.time <= other.time;
   }
 
   public function clone():SongNoteData
   {
-    return new SongNoteData(this.rowTime, this.data, this.length, this.kind);
+    return new SongNoteData(this.time, this.data, this.length, this.kind);
   }
 
   /**
@@ -1049,15 +1073,8 @@ abstract SongNoteData(SongNoteDataRaw) from SongNoteDataRaw to SongNoteDataRaw
    */
   public function toString():String
   {
-    return 'SongNoteData(${this.rowTime} rows, ' + (this.length > 0 ? '[${this.length} row hold]' : '') + ' ${this.data}'
+    return 'SongNoteData(${this.time}ms, ' + (this.length > 0 ? '[${this.length}ms hold]' : '') + ' ${this.data}'
       + (this.kind != '' ? ' [kind: ${this.kind}])' : ')');
-  }
-  public static function fromVSlice(conductor: Conductor, raw: VSliceNoteData): SongNoteData {
-    // : )
-    final rowTime = conductor.getTimeInRows(raw.time);
-    final rowLength = conductor.getTimeInRows(raw.time + raw.length) - rowTime;
-
-    return new SongNoteData(rowTime, raw.data, rowLength, raw.kind);
   }
 }
 

@@ -20,4 +20,21 @@ class SerializerUtil {
   public static function toJSON(input: Dynamic, pretty:Bool = true): String {
     return Json.stringify(input, replacer, pretty ? "\t" : null);
   }
+
+    /**
+   * Convert a JSON string to a Haxe object.
+   */
+  public static function fromJSON(input:String):Dynamic
+  {
+    try
+    {
+      return Json.parse(input);
+    }
+    catch (e)
+    {
+      trace('An error occurred while parsing JSON from string data');
+      trace(e);
+      return null;
+    }
+  }
 }
