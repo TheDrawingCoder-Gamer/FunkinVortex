@@ -127,7 +127,7 @@ class FNFAssets
 		fdString = null;
 		fd = new FileDialog();
 		fd.onSelect.add(onSelect);
-		fd.browse(FileDialogType.OPEN, filter, null, title);
+		fd.browse(why, filter, null, title);
 		var checkTimer = new Timer(50);
 		var promise = new Promise<String>();
 		checkTimer.run = function()

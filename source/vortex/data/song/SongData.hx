@@ -142,6 +142,19 @@ class SongData implements ICloneable<SongData>
     newData.chart = SongChartData.fromVSlice(babyConductor, chartData);
     return newData;
   }
+
+  public function toVSlice(): { metadata: VSliceMetadata, chartData: VSliceChartData} {
+    final conductor = new Conductor();
+    conductor.mapTimeChanges(timeChanges);
+    final metadata = new VSliceMetadata(songName, artist, variation);
+    metadata.charter = charter;
+    metadata.offsets = offsets?.clone() ?? new SongOffsets();
+    metadata.timeChanges = [for (m in timeChanges) m.toVSlice(conductor)];
+    metadata.playData = playData.toVSlice();
+    final daChart = chart?.toVSlice(conductor);
+    if (daChart == null) throw "failed to convert chart";
+    return {metadata: metadata, chartData: daChart };
+  }
   /**
    * Produces a string representation suitable for debugging.
    */
@@ -230,6 +243,11 @@ class SongTimeChange implements ICloneable<SongTimeChange>
     final rowTime = conductor.getTimeInRows(vslice.timeStamp);
     return new SongTimeChange(rowTime, vslice.bpm, vslice.timeSignatureNum, vslice.timeSignatureDen, vslice.beatTuplets);
   }
+  public function toVSlice(conductor: Conductor): VSliceTimeChange {
+    final msTime = time ?? conductor.getRowTimeInMs(rowTime);
+    return new VSliceTimeChange(msTime, bpm, timeSignatureNum, timeSignatureDen, beatTuplets);
+  }
+
   public function stepsPerMeasure(): Int {
     return Std.int(timeSignatureNum / timeSignatureDen * Constants.STEPS_PER_BEAT * Constants.STEPS_PER_BEAT);
   }
@@ -434,11 +452,25 @@ class SongPlayData implements ICloneable<SongPlayData>
     result.noteStyle = raw.noteStyle;
     result.album = raw.album;
     result.previewStart = raw.previewStart;
+    result.previewEnd = raw.previewEnd;
     result.ratings = raw.ratings.clone();
     for (key => _ in raw.ratings) {
       result.stepmaniaRatings.set(key, 0);
     }
 
+    return result;
+  }
+  public function toVSlice(): VSlicePlayData {
+    final result = new VSlicePlayData();
+    result.songVariations = songVariations.clone();
+    result.difficulties = difficulties.clone();
+    result.characters = characters.clone();
+    result.stage = stage;
+    result.noteStyle = noteStyle;
+    result.album = album;
+    result.previewStart = previewStart;
+    result.previewEnd = previewEnd;
+    result.ratings = ratings.clone();
     return result;
   }
 }
@@ -578,6 +610,19 @@ class SongChartData implements ICloneable<SongChartData>
     }
     final res = new SongChartData(chart.scrollSpeed.clone(), eventData, noteData);
     res.variation = chart.variation;
+    return res;
+  }
+  public function toVSlice(conductor: Conductor): VSliceChartData {
+    final vsliceNoteData = new Map<String, Array<VSliceNoteData>>();
+    for (key => notes in notes) {
+      vsliceNoteData.set(key, [for (n in notes) n.toVSlice(conductor)]);
+    }
+    final vsliceEventData:Array<VSliceEventData> = [];
+    for (event in events) {
+      vsliceEventData.push(event.toVSlice(conductor));
+    }
+    final res = new VSliceChartData(scrollSpeed.clone(), vsliceEventData, vsliceNoteData);
+    res.variation = variation;
     return res;
   }
 }
@@ -808,6 +853,10 @@ abstract SongEventData(SongEventDataRaw) from SongEventDataRaw to SongEventDataR
   public static function fromVSlice(conductor: LegacyConductor, raw: VSliceEventData): SongEventData {
     final rowTime = conductor.getTimeInRows(raw.time);
     return new SongEventData(rowTime, raw.eventKind, raw.value);
+  }
+  public function toVSlice(conductor: Conductor): VSliceEventData {
+    final msTime = conductor.getRowTimeInMs(this.rowTime);
+    return new VSliceEventData(msTime, this.eventKind, this.value);
   }
 }
 
@@ -1065,6 +1114,12 @@ abstract SongNoteData(SongNoteDataRaw) from SongNoteDataRaw to SongNoteDataRaw
     final rowLength = conductor.getTimeInRows(raw.time + raw.length) - rowTime;
 
     return new SongNoteData(rowTime, raw.data, rowLength, raw.kind);
+  }
+  public function toVSlice(conductor: Conductor): VSliceNoteData {
+    final msTime = conductor.getRowTimeInMs(this.rowTime);
+    final msLength = conductor.getRowTimeInMs(this.rowTime + this.length) - msTime;
+
+    return new VSliceNoteData(msTime, this.data, msLength, this.kind);
   }
 }
 

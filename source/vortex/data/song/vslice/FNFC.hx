@@ -45,6 +45,21 @@ class FNFC {
     final opponentVocal = opponentVocals.get(variation);
     return new FNFCSong(songId, metadata, chartData, instrumental, playerVocal, opponentVocal);
   }
+  public static function fromSong(song:FNFCSong, ?variation:String): FNFC {
+    if (variation == null || variation == '') variation = Constants.DEFAULT_VARIATION;
+    final fnfc = new FNFC();
+    fnfc.songId = song.songId;
+    fnfc.loadSong(song, variation);
+    return fnfc;
+  }
+  public function loadSong(song:FNFCSong, ?variation:String): Void {
+    if (variation == null || variation == '') variation = Constants.DEFAULT_VARIATION;
+    songMetadatas.set(variation, song.songMetadata);
+    songChartDatas.set(variation, song.songChartData);
+    instrumentals.set(variation, song.instrumental);
+    playerVocals.set(variation, song.playerVocals);
+    opponentVocals.set(variation, song.opponentVocals);
+  }
   public static function loadFromPath(path:String): Null<FNFC> {
     final bytes = FileUtil.readBytesFromPath(path);
     if (bytes == null) return null;
@@ -54,6 +69,41 @@ class FNFC {
       result.path = path;
     }
     return result;
+  }
+  public function saveTo(path: String) {
+    final entries:Array<haxe.zip.Entry> = [];
+   
+    final manifest = new ChartManifestData(songId);
+    for (variation in songMetadatas.keys()) {
+      var variationId = variation;
+      final metadata = songMetadatas.get(variation);
+      if (metadata != null) {
+        entries.push(FileUtil.makeZIPEntry(manifest.getMetadataFileName(variation), metadata.serialize()));
+      }
+      final chartData = songChartDatas.get(variation);
+      if (chartData != null) {
+        entries.push(FileUtil.makeZIPEntry(manifest.getChartDataFileName(variation), chartData.serialize()));
+      }
+      final instrumental = instrumentals.get(variation);
+      if (instrumental != null) {
+        entries.push(FileUtil.makeZIPEntryFromBytes(manifest.getInstFileName(variation), instrumental));
+      }
+      final playerVocal = playerVocals.get(variation);
+      if (playerVocal != null) {
+        final playerId = metadata?.playData?.characters?.player ?? Constants.DEFAULT_CHARACTER;
+        entries.push(FileUtil.makeZIPEntryFromBytes(manifest.getVocalsFileName(playerId, variation), playerVocal));
+      }
+      final oppVocal = opponentVocals.get(variation);
+      if (oppVocal != null) {
+        // TODO: jank
+        final oppId = metadata?.playData?.characters?.opponent ?? 'dad';
+        entries.push(FileUtil.makeZIPEntryFromBytes(manifest.getVocalsFileName(oppId, variation), oppVocal));
+      }
+    }
+    entries.push(FileUtil.makeZIPEntry('manifest.json', manifest.serialize()));
+
+    FileUtil.saveFilesAsZIPToPath(entries, path, Force);
+
   }
   public static function load(bytes: Bytes): FNFC {
     final fnfc = new FNFC();

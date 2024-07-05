@@ -30,7 +30,9 @@
 	<set name="BUILD_DIR" value="export" unless="32bit"/>
 	<set name="BUILD_DIR" value="export/32bit" if="32bit" />
 	<classpath name="source" />
-	<assets path="assets" />
+	<assets path="assets/data" />
+	<assets path="assets/images"/>
+	<assets path="assets/fonts" embed="true"/>
 	<assets path="NOTICE"/>
 	<!-- _______________________________ Libraries ______________________________ -->
 

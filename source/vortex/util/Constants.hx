@@ -33,6 +33,7 @@ class Constants {
   public static final ROWS_PER_BEAT: Int = 48;
   public static final ROWS_PER_STEP: Int = Std.int(ROWS_PER_BEAT / STEPS_PER_BEAT);
   public static final ROWS_PER_MEASURE: Int = ROWS_PER_BEAT * 4;
+  public static final BEATS_PER_MEASURE: Int = 4;
   public static final MS_PER_SEC: Int = 1000;
   public static final SECS_PER_MINUTE: Int = 60;
   // ??????

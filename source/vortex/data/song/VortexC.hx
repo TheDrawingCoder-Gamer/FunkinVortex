@@ -75,8 +75,13 @@ class VortexC {
     return new VortexC(song.songId, songData, song.instrumental, song.playerVocals, song.opponentVocals);
   }
 
+  public function toFNFCSong(): FNFCSong {
+    final infos = songData.toVSlice();
+    return new FNFCSong(songId, infos.metadata, infos.chartData, instrumental, playerVocals, opponentVocals);
+  }
 
-  public function save(path: String, ?onSaveCb:String->Void, ?onCancelCb:Void->Void): Void {
+
+  public function save(path: String): Void {
     var zipEntries:Array<haxe.zip.Entry> = [];
 
     zipEntries.push(FileUtil.makeZIPEntry('${songId}.json', songData.serialize()));
@@ -91,5 +96,9 @@ class VortexC {
       final opponentCharId = songData?.playData?.characters?.opponent ?? Constants.DEFAULT_OPPONENT;
       zipEntries.push(FileUtil.makeZIPEntryFromBytes(manifest.getVocalsFileName(opponentCharId), opponentVocals));
     }
+
+    zipEntries.push(FileUtil.makeZIPEntry('manifest.json', manifest.serialize()));
+
+    FileUtil.saveFilesAsZIPToPath(zipEntries, path, Force);
   }
 }

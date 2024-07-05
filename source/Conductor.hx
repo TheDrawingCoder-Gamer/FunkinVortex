@@ -176,25 +176,28 @@ class Conductor
 	}
 
 	public function getStepTimeInMs(stepTime: Float): Float {
+		return getRowTimeInMs(stepTime / Constants.ROWS_PER_STEP);
+	}
+	public function getRowTimeInMs(rowTime: Float): Float {
 		if (timeChanges.length == 0) {
-			return stepTime * stepLengthMs;
+			return rowTime * rowLengthMs;
 		} else {
 			var resultMs: Float = 0;
 
 			var lastTimeChange = timeChanges[0];
 			for (timeChange in timeChanges) {
-				if (stepTime >= timeChange.rowTime / Constants.ROWS_PER_STEP) {
+				if (rowTime >= timeChange.rowTime) {
 					lastTimeChange = timeChange;
 					resultMs = lastTimeChange.time;
 				} else {
 					break;
 				}
 			}
-
-			var lastStepLengthMs = ((Constants.SECS_PER_MINUTE / lastTimeChange.bpm) * Constants.MS_PER_SEC) / timeSignatureNum;
-			resultMs += (stepTime - lastTimeChange.rowTime / Constants.ROWS_PER_STEP) * lastStepLengthMs;
+			var lastRowLengthMs = ((Constants.SECS_PER_MINUTE / lastTimeChange.bpm) * Constants.MS_PER_SEC) / Constants.ROWS_PER_BEAT;
+			resultMs += (rowTime - lastTimeChange.rowTime) * lastRowLengthMs;
 
 			return resultMs;
+
 		}
 	}
 

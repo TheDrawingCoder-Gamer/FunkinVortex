@@ -256,7 +256,7 @@ class SustainTrail extends FlxSprite
 
     // Bottom left
     vertices[6 * 2] = vertices[2 * 2]; // Inline with left side
-    vertices[6 * 2 + 1] = flipY ? (graphic.height * (-bottomClip + endOffset) * zoom) : (vertices[4 * 2 + 1] + graphic.height * zoom);
+    vertices[6 * 2 + 1] = flipY ? (graphic.height * (-bottomClip + endOffset) * zoom) : (graphicHeight  + graphic.height * (bottomClip - endOffset) * zoom);
 
     // Bottom right
     vertices[7 * 2] = vertices[3 * 2]; // Inline with right side

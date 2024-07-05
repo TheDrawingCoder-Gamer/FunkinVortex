@@ -302,6 +302,22 @@ class FileUtil
     saveFile(zipBytes, [FILE_FILTER_FNFC], onSave, onCancel, defaultPath, 'Save chart as FNFC...');
     return true;
   }
+  /**
+   * Takes an array of file entries and prompts the user to save them as a VortexC file.
+   */
+  public static function saveChartAsVortexC(resources:Array<Entry>, ?onSave:Array<String>->Void, ?onCancel:Void->Void, ?defaultPath:String,
+      force:Bool = false):Bool
+  {
+    // Create a ZIP file.
+    var zipBytes:Bytes = createZIPFromEntries(resources);
+    var onSave:String->Void = function(path:String) {
+      trace('Saved Vortex file to "$path"');
+      if (onSave != null) onSave([path]);
+    };
+    // Prompt the user to save the ZIP file.
+    saveFile(zipBytes, [FILE_FILTER_VORTEXC], onSave, onCancel, defaultPath, 'Save chart as VortexC...');
+    return true;
+  }
 
   /**
    * Takes an array of file entries and forcibly writes a ZIP to the given path.
