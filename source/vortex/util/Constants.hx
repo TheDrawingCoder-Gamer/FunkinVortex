@@ -49,4 +49,18 @@ class Constants {
     0xFFCC1111 // right (3)
   ];
   public static final QUANT_ARRAY: Array<Int> = [4, 8, 12, 16, 24, 32, 48, 64, 192];
+
+  public static final DANCE_SINGLE: String = "dance-single";
+  public static final DANCE_DOUBLE: String = "dance-double";
+  public static final DANCE_SOLO: String = "dance-solo";
+  public static final DANCE_COUPLE: String = "dance-couple";
+  public static final DANCE_THREEPANEL: String = "dance-threepanel";
+  public static final DANCE_ROUTINE: String = "dance-routine";
+
+  public static final PUMP_SINGLE: String = "pump-single";
+  public static final PUMP_HALFDOUBLE: String = "pump-halfdouble";
+  public static final PUMP_DOUBLE: String = "pump-double";
+  public static final PUMP_COUPLE: String = "pump-couple";
+  public static final PUMP_ROUTINE: String = "pump-routine";
 }
+

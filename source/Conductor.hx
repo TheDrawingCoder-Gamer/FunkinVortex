@@ -176,7 +176,7 @@ class Conductor
 	}
 
 	public function getStepTimeInMs(stepTime: Float): Float {
-		return getRowTimeInMs(stepTime / Constants.ROWS_PER_STEP);
+		return getRowTimeInMs(stepTime * Constants.ROWS_PER_STEP);
 	}
 	public function getRowTimeInMs(rowTime: Float): Float {
 		if (timeChanges.length == 0) {

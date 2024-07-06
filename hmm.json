@@ -19,7 +19,7 @@
       "name": "haxeui-core",
       "type": "git",
       "dir": null,
-      "ref": "276c5cb1",
+      "ref": "fd5b925d",
       "url": "https://github.com/haxeui/haxeui-core.git"
     },
     {
@@ -38,8 +38,8 @@
       "name": "json2object",
       "type": "git",
       "dir": null,
-      "url": "https://github.com/FunkinCrew/json2object",
-      "ref": "a8c26f18463c98da32f744c214fe02273e1823fa"
+      "ref": "a8c26f1",
+      "url": "https://github.com/FunkinCrew/json2object"
     },
     {
       "name": "lime",

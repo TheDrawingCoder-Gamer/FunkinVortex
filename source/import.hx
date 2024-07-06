@@ -10,4 +10,5 @@ using vortex.util.MapTools;
 using vortex.util.IteratorTools;
 using vortex.util.ArraySortTools;
 using vortex.util.SongNoteDataArrayTools;
+using vortex.util.VortexStringTools;
 #end

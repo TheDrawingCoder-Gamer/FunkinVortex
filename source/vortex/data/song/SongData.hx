@@ -56,7 +56,9 @@ class SongData implements ICloneable<SongData>
 
   public var timeChanges:Array<SongTimeChange>;
 
-  public var chart: Null<SongChartData>;
+  @:jcustomparse(vortex.data.song.SongData.SongCharts.deserialize)
+  @:jcustomwrite(vortex.data.song.SongData.SongCharts.serialize)
+  public var chart: SongCharts;
 
   @:optional
   public var variation: Null<String>;
@@ -79,7 +81,10 @@ class SongData implements ICloneable<SongData>
     this.generatedBy = Constants.GENERATED_BY;
     // Variation ID.
     this.variation = (variation == null) ? Constants.DEFAULT_VARIATION : variation;
-    this.chart = null;
+    final chartKey = new ChartKey("normal", Constants.DANCE_COUPLE);
+    final chartMap = new haxe.ds.HashMap<ChartKey, SongChart>();
+    chartMap[chartKey] = new SongChart(chartKey, 1, [],0 ,0);
+    this.chart = new SongCharts([], chartMap);
   }
 
   /**
@@ -95,7 +100,7 @@ class SongData implements ICloneable<SongData>
     result.timeChanges = this.timeChanges.deepClone();
     result.playData = this.playData.clone();
     result.generatedBy = this.generatedBy;
-    result.chart = this.chart?.clone();
+    result.chart = this.chart.clone();
     result.charter = this.charter;
 
     return result;
@@ -139,7 +144,7 @@ class SongData implements ICloneable<SongData>
     newData.offsets = metadata.offsets?.clone() ?? new SongOffsets();
     newData.timeChanges = [for (m in metadata.timeChanges) SongTimeChange.fromVSlice(babyConductor, m)];
     newData.playData = SongPlayData.fromVSlice(metadata.playData);
-    newData.chart = SongChartData.fromVSlice(babyConductor, chartData);
+    newData.chart = SongCharts.fromVSlice(babyConductor, metadata.playData, chartData);
     return newData;
   }
 
@@ -526,104 +531,169 @@ class SongCharacterData implements ICloneable<SongCharacterData>
   }
 }
 
-class SongChartData implements ICloneable<SongChartData>
-{
-  public var scrollSpeed:Map<String, Float>;
-  public var events:Array<SongEventData>;
-  public var notes:Map<String, Array<SongNoteData>>;
+class SongChartsJson {
+  public var events:Array<SongEventData> = [];
+  public var charts:Array<SongChart> = [];
+  public function new(events:Array<SongEventData>, charts:Array<SongChart>){
+    this.events = events;
+    this.charts = charts;
+  }
 
+  public static function deserialize(json: hxjsonast.Json): SongChartsJson {
+    final parser = new json2object.JsonParser<SongChartsJson>();
+    final value = parser.fromJson(hxjsonast.Printer.print(json));
+    return value;
+  }
+}
+class SongCharts implements ICloneable<SongCharts>
+{
+  @:jignored
+  public var events:Array<SongEventData>;
+
+  // make it stop
+  @:jignored
+  public var charts: haxe.ds.HashMap<ChartKey, SongChart>;
   /**
    * Defaults to `Constants.DEFAULT_VARIATION`. Populated later.
    */
   @:jignored
   public var variation:String;
 
-  public function new(scrollSpeed:Map<String, Float>, events:Array<SongEventData>, notes:Map<String, Array<SongNoteData>>)
+  public function new(events:Array<SongEventData>, charts: haxe.ds.HashMap<ChartKey, SongChart>)
   {
     this.events = events;
-    this.notes = notes;
-    this.scrollSpeed = scrollSpeed;
+    this.charts = charts;
   }
 
-  public function getScrollSpeed(diff:String = 'default'):Float
+  public function getScrollSpeed(key:ChartKey):Float
   {
-    var result:Float = this.scrollSpeed.get(diff);
+    var result:Float = this.charts.get(key)?.scrollSpeed ?? 0.0;
 
-    if (result == 0.0 && diff != 'default') return getScrollSpeed('default');
 
     return (result == 0.0) ? 1.0 : result;
   }
 
-  public function setScrollSpeed(value:Float, diff:String = 'default'):Float
+  public function setScrollSpeed(value:Float, key:ChartKey):Float
   {
-    this.scrollSpeed.set(diff, value);
+    this.charts.get(key).scrollSpeed = value;
     return value;
   }
 
-  public function getNotes(diff:String):Array<SongNoteData>
+  public function getNotes(key:ChartKey):Array<SongNoteData>
   {
-    var result:Array<SongNoteData> = this.notes.get(diff);
-
-    if (result == null && diff != 'normal') return getNotes('normal');
+    var result:Array<SongNoteData> = this.charts.get(key)?.notes;
 
     return (result == null) ? [] : result;
   }
 
-  public function setNotes(value:Array<SongNoteData>, diff:String):Array<SongNoteData>
+  public function setNotes(value:Array<SongNoteData>, key:ChartKey):Array<SongNoteData>
   {
-    this.notes.set(diff, value);
+    this.charts.get(key).notes = value;
     return value;
   }
 
-  public function clone():SongChartData
+  public function clone():SongCharts
   {
-    // We have to manually perform the deep clone here because Map.deepClone() doesn't work.
-    var noteDataClone:Map<String, Array<SongNoteData>> = new Map<String, Array<SongNoteData>>();
-    for (key in this.notes.keys())
-    {
-      noteDataClone.set(key, this.notes.get(key).deepClone());
+    var songChartClone = new haxe.ds.HashMap<ChartKey, SongChart>();
+    for (chart in charts) {
+      songChartClone.set(chart.chartKey, chart.clone());
     }
     var eventDataClone:Array<SongEventData> = this.events.deepClone();
 
-    var result:SongChartData = new SongChartData(this.scrollSpeed.clone(), eventDataClone, noteDataClone);
+    var result:SongCharts = new SongCharts(eventDataClone, songChartClone);
     result.variation = this.variation;
 
     return result;
   }
-
+  public static function deserialize(json: hxjsonast.Json, name: String): SongCharts {
+    final jsonChart = SongChartsJson.deserialize(json);
+    final charts = new haxe.ds.HashMap<ChartKey, SongChart>();
+    for (chart in jsonChart.charts) {
+      charts.set(chart.chartKey, chart);
+    }
+    return new SongCharts(jsonChart.events, charts);
+  }
+  public static function serialize(value: SongCharts): String {
+    final jsonChart = new SongChartsJson(value.events, value.charts.iterator().array());
+    final jsonWriter = new json2object.JsonWriter<SongChartsJson>();
+    return jsonWriter.write(jsonChart);
+  }
   /**
    * Produces a string representation suitable for debugging.
    */
   public function toString():String
   {
-    return 'SongChartData(${this.events.length} events, ${this.notes.size()} difficulties)';
+    return 'SongCharts(${this.events.length} events)';
   }
 
-  public static function fromVSlice(conductor: LegacyConductor, chart: VSliceChartData): SongChartData {
-    final noteData = new Map<String, Array<SongNoteData>>();
+  public static function fromVSlice(conductor: LegacyConductor, playdata: VSlicePlayData, chart: VSliceChartData): SongCharts {
+    final chartData = new haxe.ds.HashMap<ChartKey, SongChart>();
     for (key => notes in chart.notes) {
-      noteData.set(key, [for (n in notes) SongNoteData.fromVSlice(conductor, n)]);
+      final chartKey = new ChartKey(key, Constants.DANCE_COUPLE);
+      chartData.set(chartKey, new SongChart(chartKey, chart.scrollSpeed[key], [for (n in notes) SongNoteData.fromVSlice(conductor, n)], playdata.ratings[key], 0));
     }
     final eventData:Array<SongEventData> = [];
     for (event in chart.events) {
       eventData.push(SongEventData.fromVSlice(conductor, event));
     }
-    final res = new SongChartData(chart.scrollSpeed.clone(), eventData, noteData);
+    final res = new SongCharts(eventData, chartData);
     res.variation = chart.variation;
     return res;
   }
   public function toVSlice(conductor: Conductor): VSliceChartData {
     final vsliceNoteData = new Map<String, Array<VSliceNoteData>>();
-    for (key => notes in notes) {
-      vsliceNoteData.set(key, [for (n in notes) n.toVSlice(conductor)]);
+    final scrollSpeeds = new Map<String, Float>();
+    for (key => chart in charts) {
+      vsliceNoteData.set(key.difficulty, [for (n in chart.notes) n.toVSlice(conductor)]);
+      scrollSpeeds.set(key.difficulty, chart.scrollSpeed);
     }
     final vsliceEventData:Array<VSliceEventData> = [];
     for (event in events) {
       vsliceEventData.push(event.toVSlice(conductor));
     }
-    final res = new VSliceChartData(scrollSpeed.clone(), vsliceEventData, vsliceNoteData);
+    final res = new VSliceChartData(scrollSpeeds, vsliceEventData, vsliceNoteData);
     res.variation = variation;
     return res;
+  }
+  public function defaultChart(): Null<ChartKey> {
+    final keys = charts.keys().array();
+    if (keys.length == 0) return null;
+    var bestMatch = keys[0];
+    // TODO: make me work good
+    for (key in keys) {
+      if (!key.gamemode.startsWith("dance") && bestMatch.gamemode.startsWith("dance"))
+        continue;
+      if (key.gamemode == Constants.DANCE_SINGLE && bestMatch.gamemode != Constants.DANCE_SINGLE) {
+        bestMatch = key;
+      } else if (key.gamemode == bestMatch.gamemode && key.difficulty == "normal") {
+        bestMatch = key;        
+      }
+
+    }
+    return bestMatch;
+  }
+
+}
+
+
+class SongChart implements ICloneable<SongChart> {
+  public var chartKey: ChartKey;
+  public var scrollSpeed: Float;
+  public var notes: Array<SongNoteData>;
+  public var rating: Int;
+  public var stepmaniaRating: Float;
+  public function new(key: ChartKey, scrollSpeed: Float, notes: Array<SongNoteData>, rating: Int, stepmaniaRating: Float) {
+    this.chartKey = key;
+    this.scrollSpeed = scrollSpeed;
+    this.notes = notes;
+    this.rating = rating;
+    this.stepmaniaRating = stepmaniaRating;
+  }
+  public function clone(): SongChart {
+    return new SongChart(chartKey, scrollSpeed, notes.deepClone(), rating, stepmaniaRating);
+  }
+  public function toString(): String {
+    return 'SongChart(Scroll ${scrollSpeed}x, ${notes.length} notes)';
   }
 }
 
@@ -1123,3 +1193,22 @@ abstract SongNoteData(SongNoteDataRaw) from SongNoteDataRaw to SongNoteDataRaw
   }
 }
 
+class ChartKey {
+  public var difficulty: String;
+  public var gamemode: String;
+
+  public function new(difficulty:String, gamemode:String) {
+    this.difficulty = difficulty;
+    this.gamemode = gamemode;
+  }
+  // I hate you all
+  public function hashCode(): Int {
+    return difficulty.hashCode()*3 + gamemode.hashCode();
+  }
+  public function equals(that:ChartKey): Bool {
+    return this.difficulty == that.difficulty && this.gamemode == that.gamemode;
+  }
+  public function toString(): String {
+    return '${gamemode} - ${difficulty}';
+  }
+}

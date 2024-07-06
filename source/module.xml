@@ -1,0 +1,10 @@
+<module>
+	<resources>
+		<resource path="_module/styles/" prefix="styles"/>
+	</resources>
+	<themes>
+		<global>
+			<style resource="styles/funkin.css"/>
+		</global>
+	</themes>
+</module>

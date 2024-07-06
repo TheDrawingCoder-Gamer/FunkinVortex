@@ -5,12 +5,6 @@ import flixel.FlxObject;
 import flixel.FlxSprite;
 import flixel.FlxState;
 import flixel.addons.display.FlxGridOverlay;
-import flixel.addons.ui.FlxUI;
-import flixel.addons.ui.FlxUICheckBox;
-import flixel.addons.ui.FlxUIInputText;
-import flixel.addons.ui.FlxUINumericStepper;
-import flixel.addons.ui.FlxUIState;
-import flixel.addons.ui.FlxUITabMenu;
 import flixel.addons.weapon.FlxBullet;
 import flixel.graphics.frames.FlxAtlasFrames;
 import flixel.graphics.frames.FlxTileFrames;
@@ -38,16 +32,19 @@ import haxe.ui.containers.VBox;
 import haxe.ui.containers.menus.Menu;
 import haxe.ui.containers.menus.MenuBar;
 import haxe.ui.containers.menus.MenuItem;
+import haxe.ui.containers.dialogs.Dialog.DialogButton;
 import haxe.ui.core.Component;
 import haxe.ui.events.MouseEvent;
 import haxe.ui.events.UIEvent;
 import haxe.ui.focus.FocusManager;
 import haxe.ui.macros.ComponentMacros;
 import haxe.ui.styles.Style;
+import haxe.ui.backend.flixel.UIState;
 import openfl.media.Sound;
 import vortex.data.song.SongData;
-import vortex.data.song.SongData.SongChartData;
+import vortex.data.song.SongData.SongCharts;
 import vortex.data.song.SongData.SongNoteData;
+import vortex.data.song.SongData.ChartKey;
 import lime.ui.FileDialogType;
 import sys.io.File;
 import vortex.audio.FunkinSound;
@@ -98,25 +95,25 @@ typedef HoldSelect = {
 // i should be using tab menu... oh well
 // we don't have to worry about backspaces ^-^
 
+@:build(haxe.ui.macros.ComponentMacros.build("assets/exclude/data/main-view.xml"))
 @:allow(SongDataEditor)
-class PlayState extends FlxUIState
-{
-	public var songData:SongData = null;
+class PlayState extends UIState{
+	public var songData:SongData = new SongData("test", "unknown");
 	
 	public var songId:String = "";
-	public var selectedDifficulty:String = "normal";
+	public var selectedChart: ChartKey = new ChartKey("normal", Constants.DANCE_COUPLE);
 	public var savePath: Null<String> = null;
-	var currentSongChartNotes(get, never):Array<SongNoteData>;
+	public var currentSongChart(get, never): SongChart;
 
-	function get_currentSongChartNotes(): Array<SongNoteData> {
+	function get_currentSongChart(): SongChart {
 		if (songData == null) return null;
-		return songData.chart.notes[selectedDifficulty];
+		return songData.chart.charts.get(selectedChart);
 	}
 	
-	var availableDifficulties(get, never):Array<String>;
-	function get_availableDifficulties(): Array<String> {
+	var availableCharts(get, never):Array<ChartKey>;
+	function get_availableCharts(): Array<ChartKey> {
 		if (songData == null) return null;
-		return songData.playData.difficulties;
+		return songData.chart.charts.keys().array();
 	}
 	var chart:FlxSpriteGroup;
 	//var staffLines:FlxSprite;
@@ -127,7 +124,6 @@ class PlayState extends FlxUIState
 	var snaptext:FlxText;
 	var curSnap:Float = 0;
 	var curKeyType:Int = Normal;
-	var menuBar:MenuBar;
 	var curSelectedNote:Null<SongNoteData> = null;
 	var curHoldSelect:Null<SongNoteData> = null;
 	public static final GRID_SIZE = 40;
@@ -150,7 +146,6 @@ class PlayState extends FlxUIState
 	public var audioInstTrackData:Null<Bytes> = null;
 	public var playerVocalTrackData:Null<Bytes> = null;
 	public var oppVocalTrackData:Null<Bytes> = null;
-	var songDataThingie:SongDataEditor;
 
 	var snapInfo:Snaps = Four;
 	var noteTypeText:FlxText;
@@ -160,6 +155,8 @@ class PlayState extends FlxUIState
 	public var saveDataDirty: Bool = false;
 
 	public static final infosFont: String = "Roboto Bold";
+
+	var metadataToolbox:toolboxes.MetadataToolbox; 
 
 
 	override public function create()
@@ -177,6 +174,10 @@ class PlayState extends FlxUIState
 		strumLine.screenCenter(X);
 		strumLine.x -= 250;
 
+		metadataToolbox = new toolboxes.MetadataToolbox(this);
+		buildFileMenu();
+		buildChartMenu();
+		buildWindowMenu();
 		//staffLines.screenCenter(X);
 		staffLineGroup.screenCenter(X);
 		chart = new FlxSpriteGroup();
@@ -188,14 +189,6 @@ class PlayState extends FlxUIState
 		#if !electron
 		FlxG.mouse.useSystemCursor = true;
 		#end
-		// i think UIs in code get out of hand fast and i know others prefer it so.. - creator of the ui thing
-		menuBar = new MenuBar();
-		menuBar.customStyle.width = FlxG.width;
-		buildFileMenu();
-		buildChartMenu();
-		songDataThingie = new SongDataEditor(this);
-		songDataThingie.x = FlxG.width / 2;
-		songDataThingie.y = 100;
 		// songDataThingie.refreshUI(songMetadata, songChartData);
 		curSnap = LINE_SPACING * 4;
 		drawChartLines();
@@ -234,14 +227,12 @@ class PlayState extends FlxUIState
 		add(curMeasureTxt);
 		// add(openButton);
 
-		add(menuBar);
 		add(noteTypeText);
 		// add(saveButton);
 		// add(loadVocalsButton);
 		// add(loadInstButton);
 		// add(toolInfo);
 		// add(ui_box);
-		add(songDataThingie);
 		add(selectBox);
 		//add(haxeUIOpen);
 	}
@@ -289,8 +280,10 @@ class PlayState extends FlxUIState
 			playerVocalTrackData = vortexc.playerVocals;
 			oppVocalTrackData = vortexc.opponentVocals;
 			Conductor.instance.mapTimeChanges(songData.timeChanges);
+			selectedChart = songData.chart.defaultChart();
 			reloadInstrumental();
-			songDataThingie.refreshUI(songData);
+			// songDataThingie.refreshUI(songData);
+			metadataToolbox.refresh();
 			noteDisplayDirty = true;
 			chartDirty = true;
 			saveDataDirty = false;
@@ -314,10 +307,6 @@ class PlayState extends FlxUIState
 	}
 	private function buildFileMenu(): Void {
 		
-		var fileMenu = new Menu();
-		fileMenu.text = "File";
-		var saveChartMenu = new MenuItem();
-		saveChartMenu.text = "Save Chart";
 		saveChartMenu.onClick = function(e:MouseEvent)
 		{
 			// TODO: Dialog
@@ -329,8 +318,6 @@ class PlayState extends FlxUIState
 			}
 				
 		};
-		var saveAsChartMenu = new MenuItem();
-		saveAsChartMenu.text = "Save Chart As";
 		saveAsChartMenu.onClick = function(e:MouseEvent)
 		{
 			if (songData == null) return;
@@ -341,26 +328,18 @@ class PlayState extends FlxUIState
 			}
 		};
 
-		var openChartMenu = new MenuItem();
-		openChartMenu.text = "Open Chart";
 		openChartMenu.onClick = function(e:MouseEvent)
 		{
 			loadFromFile();
 		};
-		var importFNFCMenu = new MenuItem();
-		importFNFCMenu.text = "Import FNFC";
 		importFNFCMenu.onClick = function(e:MouseEvent)
 		{
 			importFromFNFC();
 		};
-		var exportFNFCMenu = new MenuItem();
-		exportFNFCMenu.text = "Export FNFC";
 		exportFNFCMenu.onClick = function(e:MouseEvent)
 		{
 			saveFNFC();	
 		};	
-		var loadInstMenu = new MenuItem();
-		loadInstMenu.text = "Load Instrument";
 		loadInstMenu.onClick = function(e:MouseEvent)
 		{
 			var future = FNFAssets.askToBrowseForPath("ogg", "Select Instrument Track");
@@ -376,8 +355,6 @@ class PlayState extends FlxUIState
 				}
 			});
 		};
-		var loadPlayerVoiceMenu = new MenuItem();
-		loadPlayerVoiceMenu.text = "Load Player Vocals";
 		loadPlayerVoiceMenu.onClick = function(e:MouseEvent)
 		{
 			var future = FNFAssets.askToBrowseForPath("ogg", "Select Voice Track");
@@ -387,8 +364,6 @@ class PlayState extends FlxUIState
 				reloadInstrumental();
 			});
 		};
-		var loadOpponentVoiceMenu = new MenuItem();
-		loadOpponentVoiceMenu.text = "Load Opponent Vocals";
 		loadOpponentVoiceMenu.onClick = function(e:MouseEvent)
 		{
 			var future = FNFAssets.askToBrowseForPath("ogg", "Select Voice Track");
@@ -398,35 +373,23 @@ class PlayState extends FlxUIState
 				reloadInstrumental();
 			});
 		};
-
-		fileMenu.addComponent(saveChartMenu);
-		fileMenu.addComponent(saveAsChartMenu);
-		fileMenu.addComponent(openChartMenu);
-		fileMenu.addComponent(importFNFCMenu);
-		fileMenu.addComponent(exportFNFCMenu);
-		fileMenu.addComponent(loadInstMenu);
-		fileMenu.addComponent(loadPlayerVoiceMenu);
-		fileMenu.addComponent(loadOpponentVoiceMenu);
-		menuBar.addComponent(fileMenu);
 	}
 	private function buildChartMenu(): Void {
-		var chartMenu = new Menu();
-		chartMenu.text = "Chart";
-
-		var prevChartMenu = new MenuItem();
-		prevChartMenu.text = "Previous Chart (F4)";
 		prevChartMenu.onClick = function(e:MouseEvent) {
 			changeDifficulty(false);
 		};
-		var nextChartMenu = new MenuItem();
-		nextChartMenu.text = "Next Chart (F5)";
 		nextChartMenu.onClick = function(e:MouseEvent) {
 			changeDifficulty(true);
 		};
-		chartMenu.addComponent(prevChartMenu);
-		chartMenu.addComponent(nextChartMenu);
-		menuBar.addComponent(chartMenu);
-
+	}
+	private function buildWindowMenu(): Void {
+		toggleToolboxMetadata.onChange = function(event:UIEvent) {
+			if (event.target.value) {
+				metadataToolbox.showDialog(false);
+			} else {
+				metadataToolbox.hideDialog(DialogButton.CANCEL);
+			}
+		};
 	}
 	private function importFromFNFC(?variation:String): Void {
 		if (variation == null) variation = Constants.DEFAULT_VARIATION;
@@ -860,7 +823,7 @@ class PlayState extends FlxUIState
 	private function addNote(id:Int):Void
 	{
 		if (songData == null) return;
-		if (currentSongChartNotes == null) return;
+		if (currentSongChart?.notes == null) return;
 		var noteRow = getRow(strumLine.members[id].y);
 		var noteData = id;
 		var noteSus = 0;
@@ -875,11 +838,11 @@ class PlayState extends FlxUIState
 			};
 		var goodNote = new SongNoteData(noteRow, noteData, noteSus, noteKindName);
 		// prefer overloading : )
-		for (note in currentSongChartNotes)
+		for (note in currentSongChart.notes)
 		{
 			if (note.rowTime == noteRow && note.data == noteData)
 			{
-				currentSongChartNotes.remove(note);
+				currentSongChart.notes.remove(note);
 				/*
 				if (note.kind != noteKindName && )
 				{
@@ -890,7 +853,7 @@ class PlayState extends FlxUIState
 				return;
 			}
 		}		
-		currentSongChartNotes.push(goodNote);
+		currentSongChart.notes.push(goodNote);
 		curHoldSelect = goodNote;
 		updateNotes();
 	}
@@ -947,15 +910,16 @@ class PlayState extends FlxUIState
 
 	private function changeDifficulty(increase:Bool):Void {
 		if (songData == null) return;
-		var curIndex = availableDifficulties.indexOf(selectedDifficulty);
+		var curIndex = availableCharts.indexOf(selectedChart);
 		if (increase) {
 			curIndex += 1;
 		} else {
 			curIndex -= 1;
 		}
-		curIndex = FlxMath.wrap(curIndex, 0, availableDifficulties.length - 1);
+		curIndex = FlxMath.wrap(curIndex, 0, availableCharts.length - 1);
 
-		selectedDifficulty = availableDifficulties[curIndex];
+		selectedChart = availableCharts[curIndex];
+		metadataToolbox.refresh();
 		chartDirty = true;
 		noteDisplayDirty = true;
 	}
@@ -970,11 +934,11 @@ class PlayState extends FlxUIState
 	private function selectNote(id:Int):Void
 	{
 		if (songData == null) return;
-		if (currentSongChartNotes == null) return;
+		if (currentSongChart?.notes == null) return;
 		var noteRow = getRow(strumLine.members[id].y);
 		var noteData = id;
 
-		for (note in currentSongChartNotes)
+		for (note in currentSongChart.notes)
 		{
 			if (note.rowTime == noteRow && note.data == noteData)
 			{
@@ -984,7 +948,8 @@ class PlayState extends FlxUIState
 				// noteInfo.updateNote(curSelectedNote);
 				updateNotes();
 				// updateNoteUI();
-				songDataThingie.refreshNoteUI(note);
+				// songDataThingie.refreshNoteUI(note);
+
 				return;
 			}
 		}
@@ -1019,7 +984,7 @@ class PlayState extends FlxUIState
 	private function handleNotes(): Void
 	{
 		if (songData == null) return;
-		if (currentSongChartNotes == null) return;
+		if (currentSongChart?.notes == null) return;
 		if (!noteDisplayDirty) return;
 
 		noteDisplayDirty = false;
@@ -1029,7 +994,7 @@ class PlayState extends FlxUIState
 		for (noteSprite in curRenderedNotes.members) {
 			if (noteSprite == null || noteSprite.noteData == null || !noteSprite.exists || !noteSprite.visible) continue;
 			
-			if (currentSongChartNotes.fastContains(noteSprite.noteData)) {
+			if (currentSongChart.notes.fastContains(noteSprite.noteData)) {
 				displayedNoteData.push(noteSprite.noteData);
 				noteSprite.updateNotePosition();
 			} else {
@@ -1045,7 +1010,7 @@ class PlayState extends FlxUIState
 				continue;
 			}
 			
-			if (!currentSongChartNotes.fastContains(holdNoteSprite.noteData) || holdNoteSprite.noteData.length == 0) {
+			if (!currentSongChart.notes.fastContains(holdNoteSprite.noteData) || holdNoteSprite.noteData.length == 0) {
 				holdNoteSprite.kill();
 			} else if (displayedHoldNoteData.fastContains(holdNoteSprite.noteData)) {
 				holdNoteSprite.kill();
@@ -1055,7 +1020,7 @@ class PlayState extends FlxUIState
 			}
 		}
 		displayedHoldNoteData.insertionSort((a, b) -> FlxSort.byValues(FlxSort.ASCENDING, a.rowTime, b.rowTime));
-		for (noteData in currentSongChartNotes) {
+		for (noteData in currentSongChart.notes) {
 			if (noteData == null) continue;
 
 			if (displayedNoteData.fastContains(noteData)) {
@@ -1093,7 +1058,7 @@ class PlayState extends FlxUIState
 
 	private function getStrumTime(yPos:Float):Float
 	{
-		return Conductor.instance.getStepTimeInMs(yPos / LINE_SPACING);
+		return Conductor.instance.getRowTimeInMs(getRow(yPos));
 	}
 	// Get the nearest row
 	private function getRow(yPos:Float): Int {
@@ -1106,8 +1071,10 @@ class PlayState extends FlxUIState
 	// AUDIO
 	private function startAudioPlayback(): Void {
 		if (audioInstTrack != null) {
-			audioInstTrack.play(false, audioInstTrack.time);
-			audioVocalTrackGroup.play(false, audioInstTrack.time);
+			final audioPos = getStrumTime(strumLine.y);
+			audioInstTrack.time = audioPos;
+			audioInstTrack.play(false, audioPos);
+			audioVocalTrackGroup.play(false, audioPos);
 		}
 	}
 	private function stopAudioPlayback(): Void {

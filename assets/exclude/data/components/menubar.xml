@@ -1,0 +1,33 @@
+<menubar id="menubar" width="100%">
+	<menu text="File">
+		<menu-item id="openChartMenu" text="Open Chart..." shortcutText="Ctrl+O"/>
+		<menu-separator/>
+		<menu-item id="saveChartMenu" text="Save Chart" shortcutText="Ctrl+S"/>
+		<menu-item id="saveAsChartMenu" text="Save Chart As..." shortcutText="Ctrl+Shift+S"/>
+		<menu-separator/>
+		<menu-item id="importFNFCMenu" text="Import FNFC..."/>
+		<menu-item id="exportFNFCMenu" text="Export FNFC..."/>
+		<menu-separator/>
+		<menu-item id="importStepmaniaMenu" text="Import Stepmania..." disabled="true"/>
+		<menu-item id="exportStepmaniaMenu" text="Export Stepmania..." disabled="true"/>
+		<menu-separator/>
+		<menu-item id="loadInstMenu" text="Load Instrumental..."/>
+		<menu-item id="loadPlayerVoiceMenu" text="Load Player Vocals..."/>
+		<menu-item id="loadOpponentVoiceMenu" text="Load Opponent Vocals..."/>
+	</menu>
+	<menu text="Chart">
+		<menu-item id="prevChartMenu" text="Previous Chart" shortcutText="F4"/>
+		<menu-item id="nextChartMenu" text="Next Chart" shortcutText="F5"/>
+	</menu>
+	<menu text="Window">
+		<menu-checkbox id="toggleToolboxMetadata" text="Metadata"/>
+		<menu-checkbox id="toggleToolboxNoteData" text="Note Data" disabled="true"/>
+		<menu-checkbox id="toggleToolboxOffsets" text="Offsets" disabled="true"/>
+		<menu-checkbox id="toggleToolboxEventData" text="Event Data" disabled="true"/>
+		</menu>
+	<menu text="Tempo">
+		<menu-checkbox id="toggleToolboxSync" text="Adjust Sync" disabled="true"/>
+		<menu-checkbox id="toggleToolboxTempo" text="Adjust Tempo" disabled="true"/>
+		<menu-checkbox id="toggleToolboxTempoAdvanced" text="Adjust Tempo (advanced)" disabled="true"/>
+	</menu>
+</menubar>

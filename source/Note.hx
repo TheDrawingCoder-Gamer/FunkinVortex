@@ -151,15 +151,17 @@ class Note extends FlxSprite
 		this.updateHitbox();
 		this.antialiasing = false;
 
-		switch (noteData.getDirection()) {
-			case 0:
-				angle = 90;
-			case 1:
-				angle = 0;
-			case 2: 
-				angle = 180;
-			case 3:
-				angle = -90;
+		if (noteData.kind != "mine" && noteData.kind != "nuke") {
+			switch (noteData.getDirection()) {
+				case 0:
+					angle = 90;
+				case 1:
+					angle = 0;
+				case 2: 
+					angle = 180;
+				case 3:
+					angle = -90;
+			}
 		}
 
 

@@ -29,6 +29,7 @@
 
 	<set name="BUILD_DIR" value="export" unless="32bit"/>
 	<set name="BUILD_DIR" value="export/32bit" if="32bit" />
+	<haxedef name="haxeui_dont_impose_base_class"/>
 	<classpath name="source" />
 	<assets path="assets/data" />
 	<assets path="assets/images"/>
