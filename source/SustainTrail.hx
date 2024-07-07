@@ -87,6 +87,8 @@ class SustainTrail extends FlxSprite
   var graphicWidth:Float = 0;
   var graphicHeight:Float = 0;
 
+  public var isRoll = false;
+
   /**
    * Normally you would take strumTime:Float, noteData:Int, sustainLength:Float, parentNote:Note (?)
    * @param NoteData
@@ -230,7 +232,7 @@ class SustainTrail extends FlxSprite
     // We are expecting an image containing 8 horizontal segments, each representing a different colored hold note followed by its end cap.
 
     uvtData[0 * 2] = 0; // 0%/25%/50%/75% of the way through the image
-    uvtData[0 * 2 + 1] = 1; // top bound
+    uvtData[0 * 2 + 1] = isRoll ? 1 : 0.5; // top bound
     // Top left
 
     // Top right
@@ -239,7 +241,7 @@ class SustainTrail extends FlxSprite
 
     // Bottom left
     uvtData[2 * 2] = uvtData[0 * 2]; // 0%/25%/50%/75% of the way through the image
-    uvtData[2 * 2 + 1] = 0.0; // bottom bound
+    uvtData[2 * 2 + 1] = isRoll ? 0.5 : 0; // bottom bound
 
     // Bottom right
     uvtData[3 * 2] = uvtData[1 * 2]; // 12.5%/37.5%/62.5%/87.5% of the way through the image (1/8th past the top left)
@@ -265,7 +267,7 @@ class SustainTrail extends FlxSprite
     // === END CAP UVs ===
     // Top left
     uvtData[4 * 2] = 0.5; // 12.5%/37.5%/62.5%/87.5% of the way through the image (1/8th past the top left of hold)
-    uvtData[4 * 2 + 1] = 0;
+    uvtData[4 * 2 + 1] = isRoll ? 0.5 : 0;
 
     // Top right
     uvtData[5 * 2] = 1; // right edge 
@@ -273,7 +275,7 @@ class SustainTrail extends FlxSprite
 
     // Bottom left
     uvtData[6 * 2] = uvtData[4 * 2]; // center
-    uvtData[6 * 2 + 1] = bottomClip; // bottom bound
+    uvtData[6 * 2 + 1] = bottomClip * (isRoll ? 1 : 0.5); // bottom bound
 
     // Bottom right
     uvtData[7 * 2] = uvtData[5 * 2]; // right Edge 

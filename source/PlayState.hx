@@ -406,6 +406,14 @@ class PlayState extends UIState{
 				reloadInstrumental();
 			});
 		};
+		exportStepmaniaMenu.onClick = function(e: MouseEvent) {
+			var future = FNFAssets.askToBrowseForPath("sm", "Save SM file", FileDialogType.SAVE);
+			future.onComplete(function(s:String)
+			{
+				final res = songData.toSM(songData.songName + ".ogg");
+				File.saveContent(s, res);
+			});
+		};
 	}
 	private function buildChartMenu(): Void {
 		newChartMenu.onClick = function(e:MouseEvent) {

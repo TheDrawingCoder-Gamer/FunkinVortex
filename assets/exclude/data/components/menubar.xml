@@ -9,7 +9,7 @@
 		<menu-item id="exportFNFCMenu" text="Export FNFC..."/>
 		<menu-separator/>
 		<menu-item id="importStepmaniaMenu" text="Import Stepmania..." disabled="true"/>
-		<menu-item id="exportStepmaniaMenu" text="Export Stepmania..." disabled="true"/>
+		<menu-item id="exportStepmaniaMenu" text="Export Stepmania..."/>
 		<menu-separator/>
 		<menu-item id="loadInstMenu" text="Load Instrumental..."/>
 		<menu-item id="loadPlayerVoiceMenu" text="Load Player Vocals..."/>

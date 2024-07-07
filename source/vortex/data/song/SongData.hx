@@ -5,6 +5,7 @@ package vortex.data.song;
 #if !macro
 import thx.semver.Version;
 import thx.semver.VersionRule;
+import flixel.util.FlxSort;
 import vortex.util.ICloneable;
 import vortex.data.song.vslice.SongData.SongChartData in VSliceChartData;
 import vortex.data.song.vslice.SongData.SongMetadata in VSliceMetadata;
@@ -154,6 +155,148 @@ class SongData implements ICloneable<SongData>
     final daChart = chart?.toVSlice(conductor);
     if (daChart == null) throw "failed to convert chart";
     return {metadata: metadata, chartData: daChart };
+  }
+
+  // Exports a Stepmania file : )
+  public function toSM(songFile:String): String {
+    final buf = new StringBuf();
+    buf.add('#TITLE:$songName;\n');
+    buf.add('#ARTIST:$artist;\n');
+    if (charter != null)
+      buf.add('#CREDIT:$charter;\n');
+    buf.add('#SELECTABLE:YES;\n');
+    final bpmChanges: Array<String> = 
+      [for (change in timeChanges) {a: change.rowTime / Constants.ROWS_PER_BEAT, b: change.bpm}].map(it -> '${it.a}=${it.b}');
+    buf.add('#BPMS:${bpmChanges.join(',')};\n');
+    buf.add('#MUSIC:$songFile;\n');
+    for (c in chart.charts) {
+      buf.add('// -- ${c.chartKey.gamemode} - ${c.chartKey.difficulty}\n');
+      buf.add('#NOTES:\n');
+      buf.add('    ${c.chartKey.gamemode}:\n');
+      final goodDiff = c.chartKey.difficulty == 'normal' ? 'medium' : c.chartKey.difficulty;
+      final weirdDiff = switch (goodDiff) {
+        case "medium" | "hard" | "easy" | "beginning" | "challenge" | "edit": false;
+        default: true;
+      }
+      buf.add('    ${weirdDiff ? goodDiff : ""}:\n');
+      buf.add('    ${weirdDiff ? "Edit" : goodDiff.capitalizeFirst()}:\n');
+      buf.add('    ${c.stepmaniaRating}:\n');
+      buf.add('    0,0,0,0,0:\n');
+      c.notes.insertionSort((x, y) -> FlxSort.byValues(FlxSort.ASCENDING, x.rowTime, y.rowTime));
+      final lastNote = c.notes[c.notes.length - 1];
+      // TODO: detect sustain correctly
+      final sectionCount = Math.ceil(lastNote.rowTime + lastNote.length / Constants.ROWS_PER_MEASURE);
+      final gamemodeNoteCount = Gamemode.gamemodes[c.chartKey.gamemode]?.noteCount ?? 4;
+      var curNote: Int = 0;
+      var strumEnds: Array<Int> = [for (i in 0...gamemodeNoteCount) -1];
+      for (sect in 0...sectionCount) {
+        if (sect != 0) buf.add(',\n');
+        var quant: Int = 0; // 4
+        final minNote: Int = curNote;
+        var maxNote: Int = curNote;
+        var stinkyNote: Int = minNote;
+        while (true) {
+          if (stinkyNote >= c.notes.length) {
+            maxNote = c.notes.length;
+            break;
+          }
+          // ???
+          final section = Math.floor(c.notes[stinkyNote].rowTime / Constants.ROWS_PER_MEASURE);
+          if (section > sect) {
+            maxNote = stinkyNote;
+            break;
+          } else {
+            for (q in 0...Constants.QUANT_ARRAY.length) {
+              final daQuant = Constants.QUANT_ARRAY[q];
+              if (c.notes[stinkyNote].rowTime % Math.round(Constants.ROWS_PER_MEASURE / daQuant) == 0) {
+                if (q > quant)
+                  quant = q;
+                break;
+              }
+            }
+            final goodTime = c.notes[stinkyNote].rowTime + c.notes[stinkyNote].length;
+            if (goodTime < (sect + 1) * Constants.ROWS_PER_MEASURE) {
+              for (q in 0...Constants.QUANT_ARRAY.length) {
+                final daQuant = Constants.QUANT_ARRAY[q];
+                if (goodTime % Math.round(Constants.ROWS_PER_MEASURE / daQuant) == 0) {
+                  if (q > quant) 
+                    quant = q;
+                  break;
+                }
+              }
+            }
+          }
+          stinkyNote += 1;
+        }
+        curNote = maxNote;
+        final sectOffset = sect * Constants.ROWS_PER_MEASURE;
+        for (note in strumEnds) {
+          if (note < sectOffset || note >= (sect + 1) * Constants.ROWS_PER_MEASURE) continue;
+          for (q in 0...Constants.QUANT_ARRAY.length) {
+            final daQuant = Constants.QUANT_ARRAY[q];
+            if (note % Math.round(Constants.ROWS_PER_MEASURE / daQuant) == 0) {
+              if (q > quant)
+                quant = q;
+              break;
+            }
+          }
+        }
+        final goodQuant = Constants.QUANT_ARRAY[quant];
+        final finalNotes: Array<Array<String>> = [for (i in 0...goodQuant) [for (j in 0...gamemodeNoteCount) "0"]];
+        for (i in minNote...maxNote) {
+          // freaky....
+          final daNote = c.notes[i];
+          final noteIdx = Math.round(goodQuant * (daNote.rowTime - sectOffset) / Constants.ROWS_PER_MEASURE);
+          finalNotes[noteIdx][daNote.data] = 
+            if (daNote.length > 0)
+                if (daNote.isRoll) 
+                  "4"
+                else
+                  "2"
+            else
+              switch (daNote.kind) {
+                // ?
+                case "mine" | "nuke": 
+                  "M";
+                case "lift":
+                  "L";
+                case "fake":
+                  "F";
+                default:
+                  "1";
+              }
+          ;
+          if (daNote.length > 0) {
+            // jank
+            // TODO: if u place a note between this prob breaks : )
+            // TODO: this breaks if you go between sections : )
+            
+            final endIdx = Math.round(goodQuant * (daNote.rowTime + daNote.length - sectOffset) / Constants.ROWS_PER_MEASURE);
+            if (endIdx > goodQuant) {
+              strumEnds[daNote.data] = daNote.rowTime + daNote.length;
+            } else {
+              finalNotes[endIdx][daNote.data] = "3";
+            }
+          }
+        }
+        for (i => possibleStrum in strumEnds) {
+          final goodStrum = possibleStrum - sectOffset;
+          if (goodStrum < 0) continue;
+          if (goodStrum > Constants.ROWS_PER_MEASURE) continue;
+          final strumEndIdx = Math.round((goodQuant * goodStrum) / Constants.ROWS_PER_MEASURE);
+          finalNotes[strumEndIdx][i] = "3";
+
+
+        }
+        buf.add(finalNotes.map(it -> it.join("")).join("\n"));
+        buf.add("\n");
+
+      }
+      buf.add(";\n");
+
+    }
+
+    return buf.toString();
   }
   /**
    * Produces a string representation suitable for debugging.
@@ -593,7 +736,7 @@ class SongCharts implements ICloneable<SongCharts>
   public static function fromVSlice(conductor: LegacyConductor, playdata: VSlicePlayData, chart: VSliceChartData): SongCharts {
     final chartData = [];
     for (key => notes in chart.notes) {
-      final chartKey = new ChartKey(key, Constants.DANCE_COUPLE);
+      final chartKey = new ChartKey(key, Constants.DANCE_DOUBLE);
       if (chartKey.difficulty == "normal") chartKey.difficulty = "medium";
       chartData.push(new SongChart(chartKey, chart.scrollSpeed[key], [for (n in notes) SongNoteData.fromVSlice(conductor, n)], playdata.ratings[key], 0));
     }
@@ -610,7 +753,7 @@ class SongCharts implements ICloneable<SongCharts>
     final scrollSpeeds = new Map<String, Float>();
     for (chart in charts) {
       final key = chart.chartKey;
-      if (key.gamemode != Constants.DANCE_COUPLE) continue;
+      if (key.gamemode == Constants.DANCE_DOUBLE || key.gamemode == Constants.DANCE_COUPLE) continue;
       final diff = if (key.difficulty == "medium") "normal" else key.difficulty;
       vsliceNoteData.set(diff, [for (n in chart.notes) n.toVSlice(conductor)]);
       scrollSpeeds.set(diff, chart.scrollSpeed);
@@ -916,6 +1059,9 @@ class SongNoteDataRaw implements ICloneable<SongNoteDataRaw>
   @:alias("d")
   public var data:Int;
 
+  @:default(false)
+  @:optional
+  public var isRoll:Bool = false;
   /**
    * Length of the note, if applicable.
    * Defaults to 0 for single notes.

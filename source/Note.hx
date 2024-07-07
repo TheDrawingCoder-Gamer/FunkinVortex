@@ -202,9 +202,6 @@ class Note extends FlxSprite
 				colorSwap.saturation = -1;
 				colorSwap.brightness = -0.2;
 		}
-		if (childSus != null) {
-			childSus.shader = colorSwap.shader;
-		}
 
 	}
 	public var noteData(default, set): Null<SongNoteData>;

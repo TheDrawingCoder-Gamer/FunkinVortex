@@ -17,4 +17,8 @@ class VortexStringTools {
     }
     return h;
   }
+
+  public static function capitalizeFirst(str: String): String {
+    return str.substr(0, 1).toUpperCase() + str.substr(1);
+  }
 }

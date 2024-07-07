@@ -13,6 +13,7 @@ import flixel.math.FlxMath;
 class SusNote extends SustainTrail
 {
   public var parentState:PlayState;
+  public var colorswap: ColorSwapShader.ColorSwap;
 
   public function new(parent:PlayState)
   {
@@ -20,6 +21,8 @@ class SusNote extends SustainTrail
     super(0, 100);
 
     this.parentState = parent;
+    this.colorswap = new ColorSwapShader.ColorSwap();
+    this.shader = colorswap.shader;
 
     zoom = 1.0;
 
@@ -71,6 +74,7 @@ class SusNote extends SustainTrail
     graphicWidth = graphic.width * zoom; // amount of notes * 2
 
     updateHitbox();
+    
   }
 
   public override function revive():Void
@@ -164,5 +168,11 @@ class SusNote extends SustainTrail
 
     // Account for expanded clickable hitbox.
     this.x += this.offset.x;
-  }
+
+    // freaky...
+    if (this.noteData.isRoll)
+      colorswap.hue = 120 / 360;
+    else
+      colorswap.hue = 240 / 360;
+  } 
 }
