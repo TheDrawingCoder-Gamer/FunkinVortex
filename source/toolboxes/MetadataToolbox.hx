@@ -161,7 +161,7 @@ class MetadataToolbox extends BaseToolbox {
 			inputStepmaniaRating.value = playstate.currentSongChart.stepmaniaRating;
 			inputScrollSpeed.value = playstate.currentSongChart.scrollSpeed;
 			labelScrollSpeed.text = 'Scroll Speed ${playstate.currentSongChart.scrollSpeed}x';
-			frameDifficulty.text = 'Chart: ${playstate.selectedChart}';
+			frameDifficulty.text = 'Chart: ${playstate.currentSongChart.chartKey}';
 		} else {
 			frameDifficulty.disabled = true;
 			frameDifficulty.text = 'No Chart loaded!';

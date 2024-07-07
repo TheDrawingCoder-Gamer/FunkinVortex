@@ -56,8 +56,6 @@ class SongData implements ICloneable<SongData>
 
   public var timeChanges:Array<SongTimeChange>;
 
-  @:jcustomparse(vortex.data.song.SongData.SongCharts.deserialize)
-  @:jcustomwrite(vortex.data.song.SongData.SongCharts.serialize)
   public var chart: SongCharts;
 
   @:optional
@@ -81,7 +79,7 @@ class SongData implements ICloneable<SongData>
     this.generatedBy = Constants.GENERATED_BY;
     // Variation ID.
     this.variation = (variation == null) ? Constants.DEFAULT_VARIATION : variation;
-    this.chart = new SongCharts([], new haxe.ds.HashMap<ChartKey, SongChart>());
+    this.chart = new SongCharts([], []);
   }
 
   /**
@@ -528,40 +526,23 @@ class SongCharacterData implements ICloneable<SongCharacterData>
   }
 }
 
-class SongChartsJson {
-  public var events:Array<SongEventData> = [];
-  public var charts:Array<SongChart> = [];
-  public function new(events:Array<SongEventData>, charts:Array<SongChart>){
-    this.events = events;
-    this.charts = charts;
-  }
-
-  public static function deserialize(json: hxjsonast.Json): SongChartsJson {
-    final parser = new json2object.JsonParser<SongChartsJson>();
-    final value = parser.fromJson(hxjsonast.Printer.print(json));
-    return value;
-  }
-}
 class SongCharts implements ICloneable<SongCharts>
 {
-  @:jignored
   public var events:Array<SongEventData>;
 
-  // make it stop
-  @:jignored
-  public var charts: haxe.ds.HashMap<ChartKey, SongChart>;
+  public var charts: Array<SongChart>;
   /**
    * Defaults to `Constants.DEFAULT_VARIATION`. Populated later.
    */
   @:jignored
   public var variation:String;
 
-  public function new(events:Array<SongEventData>, charts: haxe.ds.HashMap<ChartKey, SongChart>)
+  public function new(events:Array<SongEventData>, charts: Array<SongChart>)
   {
     this.events = events;
     this.charts = charts;
   }
-
+  /*
   public function getScrollSpeed(key:ChartKey):Float
   {
     var result:Float = this.charts.get(key)?.scrollSpeed ?? 0.0;
@@ -575,7 +556,8 @@ class SongCharts implements ICloneable<SongCharts>
     this.charts.get(key).scrollSpeed = value;
     return value;
   }
-
+  */
+  /*
   public function getNotes(key:ChartKey):Array<SongNoteData>
   {
     var result:Array<SongNoteData> = this.charts.get(key)?.notes;
@@ -588,32 +570,17 @@ class SongCharts implements ICloneable<SongCharts>
     this.charts.get(key).notes = value;
     return value;
   }
+  */
 
   public function clone():SongCharts
   {
-    var songChartClone = new haxe.ds.HashMap<ChartKey, SongChart>();
-    for (chart in charts) {
-      songChartClone.set(chart.chartKey, chart.clone());
-    }
+    final songChartClone = this.charts.clone();
     var eventDataClone:Array<SongEventData> = this.events.deepClone();
 
     var result:SongCharts = new SongCharts(eventDataClone, songChartClone);
     result.variation = this.variation;
 
     return result;
-  }
-  public static function deserialize(json: hxjsonast.Json, name: String): SongCharts {
-    final jsonChart = SongChartsJson.deserialize(json);
-    final charts = new haxe.ds.HashMap<ChartKey, SongChart>();
-    for (chart in jsonChart.charts) {
-      charts.set(chart.chartKey, chart);
-    }
-    return new SongCharts(jsonChart.events, charts);
-  }
-  public static function serialize(value: SongCharts): String {
-    final jsonChart = new SongChartsJson(value.events, value.charts.iterator().array());
-    final jsonWriter = new json2object.JsonWriter<SongChartsJson>();
-    return jsonWriter.write(jsonChart);
   }
   /**
    * Produces a string representation suitable for debugging.
@@ -624,10 +591,10 @@ class SongCharts implements ICloneable<SongCharts>
   }
 
   public static function fromVSlice(conductor: LegacyConductor, playdata: VSlicePlayData, chart: VSliceChartData): SongCharts {
-    final chartData = new haxe.ds.HashMap<ChartKey, SongChart>();
+    final chartData = [];
     for (key => notes in chart.notes) {
       final chartKey = new ChartKey(key, Constants.DANCE_COUPLE);
-      chartData.set(chartKey, new SongChart(chartKey, chart.scrollSpeed[key], [for (n in notes) SongNoteData.fromVSlice(conductor, n)], playdata.ratings[key], 0));
+      chartData.push(new SongChart(chartKey, chart.scrollSpeed[key], [for (n in notes) SongNoteData.fromVSlice(conductor, n)], playdata.ratings[key], 0));
     }
     final eventData:Array<SongEventData> = [];
     for (event in chart.events) {
@@ -640,10 +607,12 @@ class SongCharts implements ICloneable<SongCharts>
   public function toVSlice(conductor: Conductor): VSliceChartData {
     final vsliceNoteData = new Map<String, Array<VSliceNoteData>>();
     final scrollSpeeds = new Map<String, Float>();
-    for (key => chart in charts) {
+    for (chart in charts) {
+      final key = chart.chartKey;
       if (key.gamemode != Constants.DANCE_COUPLE) continue;
-      vsliceNoteData.set(key.difficulty, [for (n in chart.notes) n.toVSlice(conductor)]);
-      scrollSpeeds.set(key.difficulty, chart.scrollSpeed);
+      final diff = if (key.difficulty == "medium") "normal" else key.difficulty;
+      vsliceNoteData.set(diff, [for (n in chart.notes) n.toVSlice(conductor)]);
+      scrollSpeeds.set(diff, chart.scrollSpeed);
     }
     final vsliceEventData:Array<VSliceEventData> = [];
     for (event in events) {
@@ -654,7 +623,7 @@ class SongCharts implements ICloneable<SongCharts>
     return res;
   }
   public function defaultChart(): Null<ChartKey> {
-    final keys = charts.keys().array();
+    final keys = charts.map(it -> it.chartKey);
     if (keys.length == 0) return null;
     var bestMatch = keys[0];
     // TODO: make me work good

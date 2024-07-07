@@ -22,6 +22,8 @@ class StrumLine extends FlxTypedSpriteGroup<StrumNote> {
 		this.gamemode = gamemode;
 		for (member in this.members) {
 			member.kill();
+			// hack
+			member.x = this.x;
 		}
 		this.noteCount = gamemode.noteCount;
 		for (i in 0...noteCount) {
@@ -53,9 +55,10 @@ class StrumNote extends FlxSprite {
 
 		colorSwap = new ColorSwapShader.ColorSwap();
 
-		this.frames = FlxTileFrames.fromGraphic(FlxGraphic.fromAssetKey("assets/images/arrow.png"), new FlxPoint(16, 16));
+		this.loadGraphic("assets/images/arrow.png", true, 16, 16);
 
 		this.shader = colorSwap.shader;
+		this.useFramePixels = true;
 
 		animation.add('static-normal', [0]);
 		animation.add('pressed-normal', [2, 4]);
@@ -80,7 +83,7 @@ class StrumNote extends FlxSprite {
 		this.active = true;
 		this.antialiasing = false;
 
-		setGraphicSize(40);
+		setGraphicSize(Std.int(40));
 		updateHitbox();
 
 	}

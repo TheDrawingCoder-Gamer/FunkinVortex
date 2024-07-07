@@ -11,21 +11,30 @@ class Gamemode {
   public function new() {}
 
 
-  static function load(): Map<String, Gamemode> {
+
+  static function load(): Array<Gamemode> {
     final parser = new json2object.JsonParser<Array<Gamemode>>();
     final arr = parser.fromJson(FNFAssets.getText("assets/data/gamemodes.json"));
-    final damap = new Map<String, Gamemode>();
-    for (item  in arr) {
-      damap.set(item.id, item);
-    }
-    return damap;
+    return arr;
   }
 
+  public static var gamemodeArr(get, null): Array<Gamemode> = null;
   public static var gamemodes(get, null): Map<String, Gamemode> = null;
 
+  static function get_gamemodeArr(): Array<Gamemode> {
+    if (gamemodeArr == null)
+      gamemodeArr = load();
+    return gamemodeArr;
+  }
   static function get_gamemodes(): Map<String, Gamemode> {
-    if (gamemodes == null)
-      gamemodes = load();
+    if (gamemodes == null) {
+      final arr = get_gamemodeArr();
+      final map = new Map<String, Gamemode>();
+      for (item in arr) {
+        map.set(item.id, item);
+      }
+      gamemodes = map;
+    }
     return gamemodes;
   }
 }

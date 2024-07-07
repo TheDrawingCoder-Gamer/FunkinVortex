@@ -102,20 +102,16 @@ class PlayState extends UIState{
 	public var songData:SongData = new SongData("test", "unknown");
 	
 	public var songId:String = "";
-	public var selectedChart: ChartKey = new ChartKey("normal", Constants.DANCE_COUPLE);
+	public var selectedChart: Int = 0;
 	public var savePath: Null<String> = null;
 	public var currentSongChart(get, never): SongChart;
 
 	function get_currentSongChart(): SongChart {
 		if (songData == null) return null;
-		return songData.chart.charts.get(selectedChart);
+		if (songData.chart.charts.length <= selectedChart) return null;
+		return songData.chart.charts[selectedChart];
 	}
 	
-	var availableCharts(get, never):Array<ChartKey>;
-	function get_availableCharts(): Array<ChartKey> {
-		if (songData == null) return null;
-		return songData.chart.charts.keys().array();
-	}
 	var haxeUIDialogOpen(get, never):Bool;
 	function get_haxeUIDialogOpen(): Bool {
 		return FocusManager.instance.focus != null;
@@ -123,7 +119,8 @@ class PlayState extends UIState{
 
 	var currentGamemode(get, never): Null<Gamemode>;
 	function get_currentGamemode(): Null<Gamemode> {
-		return Gamemode.gamemodes[selectedChart.gamemode];
+		if (currentSongChart == null) return null;
+		return Gamemode.gamemodes[currentSongChart.chartKey.gamemode];
 	}
 	var chart:FlxSpriteGroup;
 	//var staffLines:FlxSprite;
@@ -294,7 +291,8 @@ class PlayState extends UIState{
 			playerVocalTrackData = vortexc.playerVocals;
 			oppVocalTrackData = vortexc.opponentVocals;
 			Conductor.instance.mapTimeChanges(songData.timeChanges);
-			selectedChart = songData.chart.defaultChart();
+			// ?
+			selectedChart = 0;
 			reloadInstrumental();
 			// songDataThingie.refreshUI(songData);
 			metadataToolbox.refresh();
@@ -682,33 +680,35 @@ class PlayState extends UIState{
 		handleFileKeybinds();
 		handleChartKeybinds();
 
-		for (i in 0...noteControls.length)
-		{
+		if (currentGamemode != null) {
+			for (i in 0...noteControls.length)
+			{
 
-			if (!noteControls[i] || FocusManager.instance.focus != null || currentGamemode.noteCount <= i)
-				continue;
-			if (FlxG.keys.pressed.CONTROL)
-			{
-				selectNote(i);
+				if (!noteControls[i] || FocusManager.instance.focus != null || currentGamemode.noteCount <= i)
+					continue;
+				if (FlxG.keys.pressed.CONTROL)
+				{
+					selectNote(i);
+				}
+				/*
+				else if (FlxG.keys.pressed.A)
+				{
+					convertToRoll(i);
+				}
+				*/
+				else
+				{
+					addNote(i);
+				}
 			}
-			/*
-			else if (FlxG.keys.pressed.A)
+			for (i in 0...noteRelease.length)
 			{
-				convertToRoll(i);
-			}
-			*/
-			else
-			{
-				addNote(i);
-			}
-		}
-		for (i in 0...noteRelease.length)
-		{
-			if (!noteRelease[i] || currentGamemode.noteCount <= i)
-				continue;
-			if (curHoldSelect != null && curHoldSelect.data == i)
-			{
-				curHoldSelect = null;
+				if (!noteRelease[i] || currentGamemode.noteCount <= i)
+					continue;
+				if (curHoldSelect != null && curHoldSelect.data == i)
+				{
+					curHoldSelect = null;
+				}
 			}
 		}
 		handleChart();
@@ -911,20 +911,19 @@ class PlayState extends UIState{
 
 	private function changeDifficulty(increase:Bool):Void {
 		if (songData == null) return;
-		var curIndex = availableCharts.indexOf(selectedChart);
 		if (increase) {
-			curIndex += 1;
+			selectedChart += 1;
 		} else {
-			curIndex -= 1;
+			selectedChart -= 1;
 		}
-		curIndex = FlxMath.wrap(curIndex, 0, availableCharts.length - 1);
+		selectedChart = FlxMath.wrap(selectedChart, 0, songData.chart.charts.length - 1);
 
-		loadChart(availableCharts[curIndex]);
+		loadChart(selectedChart);
 	}
 
-	public function loadChart(key: ChartKey): Void {
+	public function loadChart(id: Int): Void {
 		if (songData == null) return;
-		selectedChart = key;
+		selectedChart = id;
 		metadataToolbox.refresh();
 		chartDirty = true;
 		noteDisplayDirty = true;

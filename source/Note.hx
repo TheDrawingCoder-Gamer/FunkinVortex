@@ -79,6 +79,7 @@ class Note extends FlxSprite
 		this.frames = noteFrameCollection;
 
 		this.shader = colorSwap.shader;
+		this.useFramePixels = true;
 
 		animation.add('tapNote-normal', [2]);
 		animation.add('liftNote-normal', [3]);
