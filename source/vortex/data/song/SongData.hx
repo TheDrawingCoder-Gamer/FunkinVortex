@@ -644,6 +644,7 @@ class SongCharts implements ICloneable<SongCharts>
     final vsliceNoteData = new Map<String, Array<VSliceNoteData>>();
     final scrollSpeeds = new Map<String, Float>();
     for (key => chart in charts) {
+      if (key.gamemode != Constants.DANCE_COUPLE) continue;
       vsliceNoteData.set(key.difficulty, [for (n in chart.notes) n.toVSlice(conductor)]);
       scrollSpeeds.set(key.difficulty, chart.scrollSpeed);
     }

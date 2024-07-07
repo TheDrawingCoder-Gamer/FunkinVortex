@@ -80,14 +80,17 @@ class Note extends FlxSprite
 
 		this.shader = colorSwap.shader;
 
-		animation.add('tapNote', [0]);
-		animation.add('mineNote', [1]);
-		animation.add('nukeNote', [2]);
-		animation.add('liftNote', [6]);
-		animation.add('customNote', [7]);
+		animation.add('tapNote', [1]);
+		animation.add('liftNote', [2]);
+		animation.add('tapNote-diag', [8]);
+		animation.add('liftNote-diag', [9]);
+		animation.add('tapNote-center', [16]);
+		animation.add('liftNote-center', [17]);
+		animation.add('mineNote', [21]);
+		animation.add('nukeNote', [22]);
 
-		setGraphicSize(Std.int(width * 0.7));
-		updateHitbox();
+		setGraphicSize(Std.int(40));
+		// updateHitbox();
 		antialiasing = false;
 
 	}
@@ -135,8 +138,6 @@ class Note extends FlxSprite
 		if (this.noteData == null) return;
 
 		switch (noteData.kind) {
-			case null:
-				this.animation.play('tapNote');
 			case "mine":
 				this.animation.play('mineNote');
 			case "lift":
@@ -144,7 +145,7 @@ class Note extends FlxSprite
 			case "nuke":
 				this.animation.play('nukeNote');
 			default:
-				this.animation.play('customNote');
+				this.animation.play('tapNote');
 		}
 
 		this.setGraphicSize(Std.int(parentState.strumLine.members[0].width));

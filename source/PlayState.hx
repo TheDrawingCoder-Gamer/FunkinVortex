@@ -54,6 +54,7 @@ import vortex.data.song.VortexC;
 import vortex.data.song.vslice.FNFC;
 import vortex.util.assets.SoundUtil;
 import haxe.io.Bytes;
+import vortex.data.song.Gamemode;
 
 using StringTools;
 
@@ -115,10 +116,14 @@ class PlayState extends UIState{
 		if (songData == null) return null;
 		return songData.chart.charts.keys().array();
 	}
+	var haxeUIDialogOpen(get, never):Bool;
+	function get_haxeUIDialogOpen(): Bool {
+		return FocusManager.instance.focus != null;
+	}
 	var chart:FlxSpriteGroup;
 	//var staffLines:FlxSprite;
 	var staffLineGroup:FlxTypedSpriteGroup<Line>;
-	public var strumLine:FlxSpriteGroup;
+	public var strumLine:StrumLine;
 	var curRenderedNotes:FlxTypedSpriteGroup<Note>;
 	var curRenderedSus:FlxTypedSpriteGroup<SusNote>;
 	var snaptext:FlxText;
@@ -162,7 +167,7 @@ class PlayState extends UIState{
 	override public function create()
 	{
 		super.create();
-		strumLine = new FlxSpriteGroup(0, 0);
+		strumLine = new StrumLine();
 		curRenderedNotes = new FlxTypedSpriteGroup<Note>();
 		curRenderedSus = new FlxTypedSpriteGroup<SusNote>();
 		// make it ridulously big
@@ -170,9 +175,8 @@ class PlayState extends UIState{
 		// staffLines = new FlxSprite().makeGraphic(FlxG.width, 1000 * LINE_SPACING, FlxColor.BLACK);
 		staffLineGroup = new FlxTypedSpriteGroup<Line>();
 		staffLineGroup.setPosition(0, 0);
-		generateStrumLine();
+		strumLine.setup(Gamemode.DANCE_SINGLE);
 		strumLine.screenCenter(X);
-		strumLine.x -= 250;
 
 		metadataToolbox = new toolboxes.MetadataToolbox(this);
 		buildFileMenu();
@@ -234,12 +238,14 @@ class PlayState extends UIState{
 		// add(toolInfo);
 		// add(ui_box);
 		add(selectBox);
-		//add(haxeUIOpen);
+		remove(menubar);
+		// freaky...
+		add(menubar);
 	}
 
 
 
-	private function loadFromFile():Void
+	private function loadFromFile(usePath:Bool=false):Void
 	{
 		var future = FNFAssets.askToBrowseForPath("vortexc", "Select Vortex Chart");
 		future.onComplete(function(s:String)
@@ -247,6 +253,7 @@ class PlayState extends UIState{
 			try {
 				final vortexc = VortexC.loadFromPath(s);
 				loadFromVortexC(vortexc);
+				if (usePath) savePath = s;
 			} catch (e) {
 				trace(e);
 			}
@@ -262,6 +269,7 @@ class PlayState extends UIState{
 		}
 	}
 	private function saveAs(): Void {
+		if (songData == null) return;
 		var future = FNFAssets.askToBrowseForPath("vortexc", "Save Chart To...", FileDialogType.SAVE);
 		future.onComplete(function(s:String) {
 			savePath = s;
@@ -305,6 +313,27 @@ class PlayState extends UIState{
 		});
 
 	}
+	private function handleFileKeybinds(): Void {
+		if (haxeUIDialogOpen) return;
+		if (FlxG.keys.pressed.CONTROL && FlxG.keys.justPressed.S) {
+			if (FlxG.keys.pressed.SHIFT) {
+				saveAs();
+			} else {
+				save();
+			}
+		}
+		if (FlxG.keys.pressed.CONTROL && FlxG.keys.justPressed.O) {
+			loadFromFile(true);
+		}
+	}
+	private function handleChartKeybinds(): Void {
+		if (haxeUIDialogOpen) return;
+		if (FlxG.keys.justPressed.F4) {
+			changeDifficulty(false);	
+		} else if (FlxG.keys.justPressed.F5){
+			changeDifficulty(true);
+		}
+	}
 	private function buildFileMenu(): Void {
 		
 		saveChartMenu.onClick = function(e:MouseEvent)
@@ -330,7 +359,7 @@ class PlayState extends UIState{
 
 		openChartMenu.onClick = function(e:MouseEvent)
 		{
-			loadFromFile();
+			loadFromFile(true);
 		};
 		importFNFCMenu.onClick = function(e:MouseEvent)
 		{
@@ -524,7 +553,7 @@ class PlayState extends UIState{
 			if (FlxG.keys.justPressed.Q)
 			{
 				curKeyType -= 1;
-				curKeyType = cast FlxMath.wrap(curKeyType, 0, 99);
+				curKeyType = cast FlxMath.wrap(curKeyType, 0, Death);
 				switch (curKeyType)
 				{
 					case Normal:
@@ -535,9 +564,6 @@ class PlayState extends UIState{
 						noteTypeText.text = "Mine Note";
 					case Death:
 						noteTypeText.text = "Death Note";
-					case 4:
-						// drain
-						noteTypeText.text = "Drain Note";
 					default:
 						noteTypeText.text = 'Custom Note ${curKeyType - 4}';
 				}
@@ -556,9 +582,6 @@ class PlayState extends UIState{
 						noteTypeText.text = "Mine Note";
 					case Death:
 						noteTypeText.text = "Death Note";
-					case 4:
-						// drain
-						noteTypeText.text = "Drain Note";
 					default:
 						noteTypeText.text = 'Custom Note ${curKeyType - 4}';
 				}
@@ -579,13 +602,6 @@ class PlayState extends UIState{
 			{
 				strumLine.y = 0;
 				moveStrumLine(0);
-			}
-			if (FlxG.keys.justPressed.F4)
-			{
-				changeDifficulty(false);
-			} else if (FlxG.keys.justPressed.F5)
-			{
-				changeDifficulty(true);
 			}
 			/*
 				if (FlxG.keys.pressed.SHIFT && FlxG.mouse.justPressed)
@@ -648,6 +664,8 @@ class PlayState extends UIState{
 
 		}
 		handleMusicPlayback(elapsed);
+		handleFileKeybinds();
+		handleChartKeybinds();
 
 		for (i in 0...noteControls.length)
 		{
@@ -677,10 +695,10 @@ class PlayState extends UIState{
 				curHoldSelect = null;
 			}
 		}
+		handleChart();
 		handleNotes();
 		handleQuantization();
-		handleChart();
-		camFollow.setPosition(FlxG.width / 2, strumLine.y);
+		camFollow.setPosition(FlxG.width / 2, strumLine.y + FlxG.height * 1 / 4);
 	}
 
 	private function updateMeasure(): Void {
@@ -708,39 +726,6 @@ class PlayState extends UIState{
 		updateNotes();
 		Conductor.instance.update(Conductor.instance.getRowTimeInMs(strumRow));
 		updateMeasure();
-	}
-
-	private function generateStrumLine()
-	{
-		final graphic = FlxGraphic.fromAssetKey('assets/images/arrow.png');
-		var frames = FlxTileFrames.fromGraphic(graphic, new FlxPoint(16, 16));
-		for (i in 0...8)
-		{
-			var babyArrow = new FlxSprite(strumLine.x, strumLine.y);
-			babyArrow.frames = frames;
-
-			babyArrow.animation.add('tapNote', [3]);
-			babyArrow.animation.play("tapNote");
-			babyArrow.angle = switch (i % 4)
-			{
-				case 0:
-					90;
-				case 1:
-					0;
-				case 2:
-					180;
-				case 3:
-					-90;
-				default: 0;
-			}
-			babyArrow.antialiasing = false;
-			babyArrow.setGraphicSize(Std.int(40));
-			babyArrow.x += 45 * i;
-			babyArrow.updateHitbox();
-			babyArrow.scrollFactor.set();
-			babyArrow.ID = i;
-			strumLine.add(babyArrow);
-		}
 	}
 
 
@@ -975,6 +960,11 @@ class PlayState extends UIState{
 		if (!chartDirty) return;
 
 		chartDirty = false;
+
+		if (currentSongChart != null) {
+			strumLine.setup(cast currentSongChart.chartKey.gamemode);
+			strumLine.screenCenter(X);
+		}
 
 		drawChartLines();
 	}
