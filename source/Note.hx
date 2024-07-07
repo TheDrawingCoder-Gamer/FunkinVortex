@@ -89,8 +89,6 @@ class Note extends FlxSprite
 		animation.add('mineNote', [21]);
 		animation.add('nukeNote', [22]);
 
-		setGraphicSize(Std.int(40));
-		// updateHitbox();
 		antialiasing = false;
 
 	}

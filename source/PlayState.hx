@@ -120,6 +120,11 @@ class PlayState extends UIState{
 	function get_haxeUIDialogOpen(): Bool {
 		return FocusManager.instance.focus != null;
 	}
+
+	var currentGamemode(get, never): Null<Gamemode>;
+	function get_currentGamemode(): Null<Gamemode> {
+		return Gamemode.gamemodes[selectedChart.gamemode];
+	}
 	var chart:FlxSpriteGroup;
 	//var staffLines:FlxSprite;
 	var staffLineGroup:FlxTypedSpriteGroup<Line>;
@@ -522,7 +527,9 @@ class PlayState extends UIState{
 			FlxG.keys.justPressed.FIVE,
 			FlxG.keys.justPressed.SIX,
 			FlxG.keys.justPressed.SEVEN,
-			FlxG.keys.justPressed.EIGHT
+			FlxG.keys.justPressed.EIGHT,
+			FlxG.keys.justPressed.NINE,
+			FlxG.keys.justPressed.ZERO,
 		];
 		noteRelease = [
 			FlxG.keys.justReleased.ONE,
@@ -532,7 +539,9 @@ class PlayState extends UIState{
 			FlxG.keys.justReleased.FIVE,
 			FlxG.keys.justReleased.SIX,
 			FlxG.keys.justReleased.SEVEN,
-			FlxG.keys.justReleased.EIGHT
+			FlxG.keys.justReleased.EIGHT,
+			FlxG.keys.justReleased.NINE,
+			FlxG.keys.justReleased.ZERO,
 		];
 		noteHold = [
 			FlxG.keys.pressed.ONE,
@@ -542,7 +551,9 @@ class PlayState extends UIState{
 			FlxG.keys.pressed.FIVE,
 			FlxG.keys.pressed.SIX,
 			FlxG.keys.pressed.SEVEN,
-			FlxG.keys.pressed.EIGHT
+			FlxG.keys.pressed.EIGHT,
+			FlxG.keys.pressed.NINE,
+			FlxG.keys.pressed.ZERO,
 		];
 		if (FocusManager.instance.focus == null)
 		{
@@ -673,7 +684,8 @@ class PlayState extends UIState{
 
 		for (i in 0...noteControls.length)
 		{
-			if (!noteControls[i] || FocusManager.instance.focus != null)
+
+			if (!noteControls[i] || FocusManager.instance.focus != null || currentGamemode.noteCount <= i)
 				continue;
 			if (FlxG.keys.pressed.CONTROL)
 			{
@@ -692,7 +704,7 @@ class PlayState extends UIState{
 		}
 		for (i in 0...noteRelease.length)
 		{
-			if (!noteRelease[i])
+			if (!noteRelease[i] || currentGamemode.noteCount <= i)
 				continue;
 			if (curHoldSelect != null && curHoldSelect.data == i)
 			{
@@ -971,7 +983,7 @@ class PlayState extends UIState{
 		chartDirty = false;
 
 		if (currentSongChart != null) {
-			strumLine.setup(Gamemode.gamemodes[currentSongChart.chartKey.gamemode]);
+			strumLine.setup(currentGamemode);
 			strumLine.screenCenter(X);
 		}
 

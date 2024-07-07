@@ -53,6 +53,8 @@
 	<haxelib name="thx.core"/>
 	<haxelib name="thx.semver"/>
 
+	<haxelib name="flixel-text-input"/>
+
 	<!-- ______________________________ Haxedefines _____________________________ -->
 
 	<!--Enable the Flixel core recording system-->
@@ -71,7 +73,7 @@
 	<!--<haxedef name="FLX_NO_GAMEPAD" />-->
 
 	<!--Disable the Flixel core sound tray-->
-	<!--<haxedef name="FLX_NO_SOUND_TRAY" />-->
+	<haxedef name="FLX_NO_SOUND_TRAY" />
 
 	<!--Disable the Flixel sound management code-->
 	<!--<haxedef name="FLX_NO_SOUND_SYSTEM" />-->
