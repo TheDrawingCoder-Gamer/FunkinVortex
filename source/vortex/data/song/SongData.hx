@@ -81,10 +81,7 @@ class SongData implements ICloneable<SongData>
     this.generatedBy = Constants.GENERATED_BY;
     // Variation ID.
     this.variation = (variation == null) ? Constants.DEFAULT_VARIATION : variation;
-    final chartKey = new ChartKey("normal", Constants.DANCE_COUPLE);
-    final chartMap = new haxe.ds.HashMap<ChartKey, SongChart>();
-    chartMap[chartKey] = new SongChart(chartKey, 1, [],0 ,0);
-    this.chart = new SongCharts([], chartMap);
+    this.chart = new SongCharts([], new haxe.ds.HashMap<ChartKey, SongChart>());
   }
 
   /**

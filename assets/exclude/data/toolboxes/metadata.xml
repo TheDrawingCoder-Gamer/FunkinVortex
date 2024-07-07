@@ -20,7 +20,7 @@
 				<textfield id="inputGirlfriend" value="gf" tooltip="The girlfriend character."/>
 			</grid>
 		</frame>
-		<frame text="Difficulty: Normal" width="100%" height="170" id="frameDifficulty">
+		<frame text="No Chart loaded!" width="100%" height="170" id="frameDifficulty">
 			<grid columns="2">
 				<label id="labelScrollSpeed" text="Scroll Speed: 1.0x"/>
 				<spacer />

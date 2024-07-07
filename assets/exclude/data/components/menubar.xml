@@ -16,6 +16,8 @@
 		<menu-item id="loadOpponentVoiceMenu" text="Load Opponent Vocals..."/>
 	</menu>
 	<menu text="Chart">
+		<menu-item id="newChartMenu" text="New Chart"/>
+		<menu-separator/>
 		<menu-item id="prevChartMenu" text="Previous Chart" shortcutText="F4"/>
 		<menu-item id="nextChartMenu" text="Next Chart" shortcutText="F5"/>
 	</menu>

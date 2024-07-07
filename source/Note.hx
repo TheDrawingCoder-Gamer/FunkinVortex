@@ -15,7 +15,7 @@ import flixel.util.FlxColor;
 import flixel.util.typeLimit.OneOfTwo;
 import lime.system.System;
 import vortex.data.song.SongData;
-
+import vortex.data.song.Gamemode;
 #end
 using StringTools;
 
@@ -80,10 +80,10 @@ class Note extends FlxSprite
 
 		this.shader = colorSwap.shader;
 
-		animation.add('tapNote', [1]);
-		animation.add('liftNote', [2]);
-		animation.add('tapNote-diag', [8]);
-		animation.add('liftNote-diag', [9]);
+		animation.add('tapNote-normal', [2]);
+		animation.add('liftNote-normal', [3]);
+		animation.add('tapNote-diagonal', [9]);
+		animation.add('liftNote-diagonal', [10]);
 		animation.add('tapNote-center', [16]);
 		animation.add('liftNote-center', [17]);
 		animation.add('mineNote', [21]);
@@ -137,15 +137,17 @@ class Note extends FlxSprite
 	public function playNoteAnimation(): Void {
 		if (this.noteData == null) return;
 
+		final gamemode = Gamemode.gamemodes[parentState.currentSongChart?.chartKey?.gamemode ?? "dance-single"];
+		final animVariant = gamemode.notes[noteData.data].noteKind;
 		switch (noteData.kind) {
 			case "mine":
 				this.animation.play('mineNote');
 			case "lift":
-				this.animation.play('liftNote');
+				this.animation.play('liftNote-$animVariant');
 			case "nuke":
 				this.animation.play('nukeNote');
 			default:
-				this.animation.play('tapNote');
+				this.animation.play('tapNote-$animVariant');
 		}
 
 		this.setGraphicSize(Std.int(parentState.strumLine.members[0].width));
@@ -153,16 +155,7 @@ class Note extends FlxSprite
 		this.antialiasing = false;
 
 		if (noteData.kind != "mine" && noteData.kind != "nuke") {
-			switch (noteData.getDirection()) {
-				case 0:
-					angle = 90;
-				case 1:
-					angle = 0;
-				case 2: 
-					angle = 180;
-				case 3:
-					angle = -90;
-			}
+			angle = gamemode.notes[noteData.data].rot90 * 90;
 		}
 
 

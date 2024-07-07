@@ -123,6 +123,7 @@ class MetadataToolbox extends BaseToolbox {
 		};
 
 		inputScrollSpeed.onChange = function(event:UIEvent) {
+			if (playstate.currentSongChart == null) return;
 			var valid = event.target.value != null && event.target.value > 0;
 
 			if (valid) {
@@ -134,9 +135,11 @@ class MetadataToolbox extends BaseToolbox {
 			labelScrollSpeed.text = 'Scroll Speed ${playstate.currentSongChart.scrollSpeed}x';
 		};
 		inputDifficultyRating.onChange = function(event:UIEvent) {
+			if (playstate.currentSongChart == null) return;
 			playstate.currentSongChart.rating = event.target.value;
 		};
 		inputStepmaniaRating.onChange = function(event:UIEvent) {
+			if (playstate.currentSongChart == null) return;
 			playstate.currentSongChart.stepmaniaRating = event.target.value;
 		};
 	
@@ -146,17 +149,26 @@ class MetadataToolbox extends BaseToolbox {
 	public override function refresh():Void {
 		super.refresh();
 
+		if (playstate.songData == null) return;
 		inputSongName.value = playstate.songData.songName;
 		inputSongArtist.value = playstate.songData.artist;
 		inputSongCharter.value = playstate.songData.charter;
 		inputStage.value = playstate.songData.playData.stage;
 		inputNoteStyle.value = playstate.songData.playData.noteStyle;
-		inputDifficultyRating.value = playstate.currentSongChart.rating;
-		inputStepmaniaRating.value = playstate.currentSongChart.stepmaniaRating;
+		if (playstate.currentSongChart != null) {
+			frameDifficulty.disabled = false;
+			inputDifficultyRating.value = playstate.currentSongChart.rating;
+			inputStepmaniaRating.value = playstate.currentSongChart.stepmaniaRating;
+			inputScrollSpeed.value = playstate.currentSongChart.scrollSpeed;
+			labelScrollSpeed.text = 'Scroll Speed ${playstate.currentSongChart.scrollSpeed}x';
+			frameDifficulty.text = 'Chart: ${playstate.selectedChart}';
+		} else {
+			frameDifficulty.disabled = true;
+			frameDifficulty.text = 'No Chart loaded!';
+		}
 		inputPlayer.value = playstate.songData.playData.characters.player;
 		inputOpponent.value = playstate.songData.playData.characters.opponent;
 		inputGirlfriend.value = playstate.songData.playData.characters.girlfriend;
-		frameDifficulty.text = 'Chart: ${playstate.selectedChart}';
 
 	}
 }

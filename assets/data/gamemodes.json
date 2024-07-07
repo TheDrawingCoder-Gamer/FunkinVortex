@@ -1,0 +1,174 @@
+[
+	{
+		"id": "dance-single",
+		"displayName": "Dance Single",
+		"noteCount": 4,
+		"notes": [
+			{"rot90": 1}, 
+			{"rot90": 0},
+			{"rot90": 2},
+			{"rot90": -1}]
+	},
+	{
+		"id": "dance-double",
+		"displayName": "Dance Double",
+		"noteCount": 8,
+		"notes": [
+			{"rot90": 1}, 
+			{"rot90": 0},
+			{"rot90": 2},
+			{"rot90": -1},
+			{"rot90": 1},
+			{"rot90": 0},
+			{"rot90": 2},
+			{"rot90": -1}
+		]
+	},
+	{
+		"id": "dance-couple",
+		"displayName": "Dance Couple",
+		"noteCount": 8,
+		"numPlayers": 2,
+		"notes": [
+			{"rot90": 1}, 
+			{"rot90": 0},
+			{"rot90": 2},
+			{"rot90": -1},
+			{"rot90": 1},
+			{"rot90": 0},
+			{"rot90": 2},
+			{"rot90": -1}
+		]
+	},
+	{
+		"id": "dance-routine",
+		"displayName": "Dance Double",
+		"numPlayers": 2,
+		"noteCount": 8,
+		"notes": [
+			{"rot90": 1}, 
+			{"rot90": 0},
+			{"rot90": 2},
+			{"rot90": -1},
+			{"rot90": 1},
+			{"rot90": 0},
+			{"rot90": 2},
+			{"rot90": -1}
+		]
+	},
+	{
+		"id": "dance-solo",
+		"displayName": "Dance Solo",
+		"noteCount": 6,
+		"notes": [
+			{"rot90": 1},
+			{"noteKind": "diagonal", "rot90": 2},
+			{"rot90": 0},
+			{"rot90": 2},
+			{"noteKind": "diagonal", "rot90": -1},
+			{"rot90": -1}
+		]
+	},
+	{
+		"id": "dance-threepanel",
+		"displayName": "Dance Threepanel",
+		"noteCount": 3,
+		"notes": [
+			{"rot90": 1},
+			{"rot90": 2},
+			{"rot90": -1}
+		]
+	},
+	{
+		"id": "pump-single",
+		"displayName": "Pump Single",
+		"noteCount": 5,
+		"notes": [
+			{"noteKind": "diagonal", "rot90": 1},
+			{"noteKind": "diagonal", "rot90": 2},
+			{"noteKind": "center"},
+			{"noteKind": "diagonal", "rot90": -1},
+			{"noteKind": "diagonal", "rot90": 0}
+		]
+	},
+	{
+		"id": "pump-halfdouble",
+		"displayName": "Pump Halfdouble",
+		"noteCount": 6,
+		"notes": [
+			{"noteKind": "center"},
+			{"noteKind": "diagonal", "rot90": -1},
+			{"noteKind": "diagonal", "rot90": 0},
+			{"noteKind": "diagonal", "rot90": 1},
+			{"noteKind": "diagonal", "rot90": 2},
+			{"noteKind": "center"}
+		]
+	},
+	{
+		"id": "pump-double",
+		"displayName": "Pump Double",
+		"noteCount": 10,
+		"notes": [
+			{"noteKind": "diagonal", "rot90": 1},
+			{"noteKind": "diagonal", "rot90": 2},
+			{"noteKind": "center"},
+			{"noteKind": "diagonal", "rot90": -1},
+			{"noteKind": "diagonal", "rot90": 0},
+			{"noteKind": "diagonal", "rot90": 1},
+			{"noteKind": "diagonal", "rot90": 2},
+			{"noteKind": "center"},
+			{"noteKind": "diagonal", "rot90": -1},
+			{"noteKind": "diagonal", "rot90": 0}
+		]
+	},
+	{
+		"id": "pump-couple",
+		"displayName": "Pump Couple",
+		"noteCount": 10,
+		"numPlayers": 2,
+		"notes": [
+			{"noteKind": "diagonal", "rot90": 1},
+			{"noteKind": "diagonal", "rot90": 2},
+			{"noteKind": "center"},
+			{"noteKind": "diagonal", "rot90": -1},
+			{"noteKind": "diagonal", "rot90": 0},
+			{"noteKind": "diagonal", "rot90": 1},
+			{"noteKind": "diagonal", "rot90": 2},
+			{"noteKind": "center"},
+			{"noteKind": "diagonal", "rot90": -1},
+			{"noteKind": "diagonal", "rot90": 0}
+		]
+	},
+	{
+		"id": "pump-routine",
+		"displayName": "Pump Routine",
+		"noteCount": 10,
+		"numPlayers": 2,
+		"notes": [
+			{"noteKind": "diagonal", "rot90": 1},
+			{"noteKind": "diagonal", "rot90": 2},
+			{"noteKind": "center"},
+			{"noteKind": "diagonal", "rot90": -1},
+			{"noteKind": "diagonal", "rot90": 0},
+			{"noteKind": "diagonal", "rot90": 1},
+			{"noteKind": "diagonal", "rot90": 2},
+			{"noteKind": "center"},
+			{"noteKind": "diagonal", "rot90": -1},
+			{"noteKind": "diagonal", "rot90": 0}
+		]
+	},
+	{
+		"id": "kb7-single",
+		"displayName": "KB7 Single",
+		"noteCount": 7,
+		"notes": [
+			{"noteKind": "circle"},
+			{"noteKind": "circle"},
+			{"noteKind": "circle"},
+			{"noteKind": "circle"},
+			{"noteKind": "circle"},
+			{"noteKind": "circle"},
+			{"noteKind": "circle"}
+		]
+	}
+]

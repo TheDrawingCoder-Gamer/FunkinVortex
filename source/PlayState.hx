@@ -162,7 +162,7 @@ class PlayState extends UIState{
 	public static final infosFont: String = "Roboto Bold";
 
 	var metadataToolbox:toolboxes.MetadataToolbox; 
-
+	var newChartToolbox:toolboxes.NewChartToolbox;
 
 	override public function create()
 	{
@@ -175,10 +175,11 @@ class PlayState extends UIState{
 		// staffLines = new FlxSprite().makeGraphic(FlxG.width, 1000 * LINE_SPACING, FlxColor.BLACK);
 		staffLineGroup = new FlxTypedSpriteGroup<Line>();
 		staffLineGroup.setPosition(0, 0);
-		strumLine.setup(Gamemode.DANCE_SINGLE);
+		strumLine.setup(Gamemode.gamemodes["dance-single"]);
 		strumLine.screenCenter(X);
 
 		metadataToolbox = new toolboxes.MetadataToolbox(this);
+		newChartToolbox = new toolboxes.NewChartToolbox(this);
 		buildFileMenu();
 		buildChartMenu();
 		buildWindowMenu();
@@ -404,6 +405,9 @@ class PlayState extends UIState{
 		};
 	}
 	private function buildChartMenu(): Void {
+		newChartMenu.onClick = function(e:MouseEvent) {
+			newChartToolbox.showDialog(false);
+		}
 		prevChartMenu.onClick = function(e:MouseEvent) {
 			changeDifficulty(false);
 		};
@@ -743,7 +747,7 @@ class PlayState extends UIState{
 			final time = getStrumTime(y);	
 			final timeChange = Conductor.instance.timeChangeAt(time);
 
-			final newMeasure:Bool = i % timeChange.stepsPerMeasure() == 0;
+			final newMeasure:Bool = i % timeChange?.stepsPerMeasure() ?? 16 == 0;
 			var lineColor = newMeasure ? FlxColor.WHITE : FlxColor.GRAY;
 			if (newMeasure) {
 				i = 0;
@@ -903,7 +907,12 @@ class PlayState extends UIState{
 		}
 		curIndex = FlxMath.wrap(curIndex, 0, availableCharts.length - 1);
 
-		selectedChart = availableCharts[curIndex];
+		loadChart(availableCharts[curIndex]);
+	}
+
+	public function loadChart(key: ChartKey): Void {
+		if (songData == null) return;
+		selectedChart = key;
 		metadataToolbox.refresh();
 		chartDirty = true;
 		noteDisplayDirty = true;
@@ -947,7 +956,7 @@ class PlayState extends UIState{
 	}
 	private function handleQuantization(): Void {
 		if (!quantizationDirty) return;
-
+		
 		quantizationDirty = false;
 
 		for (noteSprite in curRenderedNotes.members) {
@@ -962,7 +971,7 @@ class PlayState extends UIState{
 		chartDirty = false;
 
 		if (currentSongChart != null) {
-			strumLine.setup(cast currentSongChart.chartKey.gamemode);
+			strumLine.setup(Gamemode.gamemodes[currentSongChart.chartKey.gamemode]);
 			strumLine.screenCenter(X);
 		}
 

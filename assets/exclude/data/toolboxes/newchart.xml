@@ -1,0 +1,30 @@
+<collapsible-dialog id="dialogNewchart" title="New Chart" width="345" height="315">
+	<vbox height="100%">
+	<grid columns="2" height="100%">
+		<label text="Gamemode" verticalAlign="center" horizontalAlign="right"/>
+		<dropdown id="inputChart">
+			<data>
+			</data>
+			</dropdown>
+		<label text="Difficulty" verticalAlign="center" horizontalAlign="right"/>
+		<dropdown id="inputDifficulty">
+			<data>
+				<item text="Beginner"/>
+				<item text="Easy"/>
+				<item text="Normal"/>
+				<item text="Hard"/>
+				<item text="Challenge"/>
+				<item text="Edit"/>
+			</data>
+		</dropdown>
+		
+		<label text="Edit Diff"/>
+			<textfield tooltip="The difficulty to save when edit is selected" id="inputEditDifficulty"/>
+			<label text="FNF rating"/>
+			<number-stepper pos="1" min="0" id="inputFNFRating"/>
+			<label text="Stepmania rating"/>
+			<number-stepper pos="1" min="0" id="inputStepmaniaRating"/>
+	</grid>
+	<button id="buttonCreate" text="Create" horizontalAlign="right"/>
+	</vbox>
+</collapsible-dialog>

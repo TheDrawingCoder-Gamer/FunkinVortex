@@ -1,31 +1,45 @@
 package vortex.data.song;
 
-enum abstract Gamemode(String) from String to String {
-  var DANCE_SINGLE = "dance-single";
-  var DANCE_DOUBLE = "dance-double";
-  var DANCE_SOLO = "dance-solo";
-  var DANCE_COUPLE = "dance-couple";
-  var DANCE_THREEPANEL = "dance-threepanel";
-  var DANCE_ROUTINE = "dance-routine";
+class Gamemode {
+  public var id: String;
+  public var displayName: String;
+  public var noteCount: Int;
+  @:default(1)
+  @:optional
+  public var numPlayers: Int;
+  public var notes: Array<GamemodeNoteInfo>;
+  public function new() {}
 
-  var PUMP_SINGLE = "pump-single";
-  var PUMP_HALFDOUBLE = "pump-halfdouble";
-  var PUMP_DOUBLE = "pump-double";
-  var PUMP_COUPLE = "pump-couple";
-  var PUMP_ROUTINE = "pump-routine";
 
-  public var noteCount(get, never): Int;
+  static function load(): Map<String, Gamemode> {
+    final parser = new json2object.JsonParser<Array<Gamemode>>();
+    final arr = parser.fromJson(FNFAssets.getText("assets/data/gamemodes.json"));
+    final damap = new Map<String, Gamemode>();
+    for (item  in arr) {
+      damap.set(item.id, item);
+    }
+    return damap;
+  }
 
-  public function get_noteCount(): Int {
-    return switch (this) {
-      case DANCE_SINGLE: 4;
-      case DANCE_DOUBLE | DANCE_COUPLE | DANCE_ROUTINE: 8;
-      case DANCE_SOLO: 6;
-      case DANCE_THREEPANEL: 3;
-      case PUMP_SINGLE: 5;
-      case PUMP_DOUBLE | PUMP_COUPLE | PUMP_ROUTINE: 10;
-      case PUMP_HALFDOUBLE: 6;
-      default: 4;
-    };
+  public static var gamemodes(get, null): Map<String, Gamemode> = null;
+
+  static function get_gamemodes(): Map<String, Gamemode> {
+    if (gamemodes == null)
+      gamemodes = load();
+    return gamemodes;
+  }
+}
+
+class GamemodeNoteInfo {
+  @:default(vortex.data.song.NoteKind.NORMAL)
+  @:optional
+  public var noteKind: NoteKind;
+  // The amount of times rotated 90 degrees
+  @default(0)
+  @:optional
+  public var rot90: Int;
+  public function new(noteKind: NoteKind, rotateBy: Int) {
+    this.noteKind = noteKind;
+    this.rot90 = rotateBy;
   }
 }

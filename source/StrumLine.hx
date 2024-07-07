@@ -8,12 +8,12 @@ import vortex.data.song.Gamemode;
 import flixel.graphics.FlxGraphic;
 
 class StrumLine extends FlxTypedSpriteGroup<StrumNote> {
-	public var gamemode(default, null): Gamemode = Gamemode.DANCE_SINGLE;
+	public var gamemode(default, null): Gamemode = null;
 	public var noteCount(default, null): Int = 4;
 	public function new() {
 		super();
 		// hardcoded max
-		for (i in 0...10) {
+		for (i in 0...30) {
 			final strumNote = new StrumNote();
 			add(strumNote);
 		}
@@ -57,18 +57,25 @@ class StrumNote extends FlxSprite {
 
 		this.shader = colorSwap.shader;
 
-		animation.add('static-norm', [0]);
-		animation.add('pressed-norm', [2, 4]);
-		animation.add('confirm-norm', [5, 6]);
+		animation.add('static-normal', [0]);
+		animation.add('pressed-normal', [2, 4]);
+		animation.add('confirm-normal', [5, 6]);
 
-		animation.add('static-diag', [7]);
-		animation.add('pressed-diag', [9, 11]);
-		animation.add('confirm-diag', [12, 13]);
+		animation.add('static-diagonal', [7]);
+		animation.add('pressed-diagonal', [9, 11]);
+		animation.add('confirm-diagonal', [12, 13]);
 
 		animation.add('static-center', [14]);
 		animation.add('pressed-center', [16, 18]);
 		animation.add('confirm-center', [19, 20]);
 
+		animation.add('static-bar', [23]);
+		animation.add('pressed-bar', [24, 26]);
+		animation.add('confirm-bar', [27, 28]);
+
+		animation.add('static-circle', [29]);
+		animation.add('pressed-circle', [30, 32]);
+		animation.add('confirm-circle', [33, 34]);
 
 		this.active = true;
 		this.antialiasing = false;
@@ -79,75 +86,12 @@ class StrumNote extends FlxSprite {
 	}
 
 	public function setup(index: Int, gamemode: Gamemode) {
-
-		switch (gamemode) {
-			case Gamemode.DANCE_SINGLE | Gamemode.DANCE_DOUBLE | Gamemode.DANCE_COUPLE | Gamemode.DANCE_ROUTINE:
-				// : )
-				this.angle = switch (index % 4) {
-					case 0:
-						90;
-					case 1: 0;
-					case 2: 180;
-					case 3: -90;
-					default: 0;
-				};
-				this.animVariant = "norm";
-			case Gamemode.DANCE_SOLO:
-				this.angle = switch (index) {
-					case 0: 90;
-					case 1: 180;
-					case 2: 0;
-					case 3: 180;
-					case 4: -90;
-					case 5: -90;
-					default: 0;
-				};
-				this.animVariant = switch (index) {
-					case 1 | 4: "diag";
-					default: "norm";
-				};
-			case Gamemode.DANCE_THREEPANEL:
-				this.angle = switch (index) {
-					case 0: 90;
-					case 1: 180;
-					case 2: -90;
-					default: 0;
-				};
-				this.animVariant = "norm";
-			case Gamemode.PUMP_SINGLE | Gamemode.PUMP_DOUBLE | Gamemode.PUMP_COUPLE | Gamemode.PUMP_ROUTINE:
-				this.angle = switch (index % 5) {
-					case 0: 90;
-					case 1: 180;
-					case 2: 0;
-					case 3: -90;
-					case 4: 0;
-					default: 0;
-				};
-				this.animVariant = switch (index % 5) {
-					case 2: "center";
-					default: "diag";
-				};
-			case Gamemode.PUMP_HALFDOUBLE:
-				this.angle = switch (index) {
-					case 0 | 5: 0;
-					case 1: -90;
-					case 2: 0;
-					case 3: 90;
-					case 4: 180;
-					default: 0;
-				};
-				this.animVariant = switch (index) {
-					case 0 | 5: "center";
-					default: "diag";
-				};
-			default:
-
-		}
+		animVariant = cast gamemode.notes[index].noteKind;
+		angle = gamemode.notes[index].rot90 * 90;
 		playStatic();
 	}
 
 	public function playStatic():Void {
-		this.active = false;
 		this.animation.play('static-$animVariant', true);
 	}
 	public function playPress(): Void {
