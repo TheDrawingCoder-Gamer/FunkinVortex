@@ -13,7 +13,7 @@ class Main extends Sprite
 		super();
 		Toolkit.init();
 		Toolkit.theme = "dark";
-		addChild(new FlxGame(0, 0, PlayState));
+		addChild(new FlxGame(0, 0, PlayState, 60, 60, true));
 		// addChild(new FPS(10, 3, 0xFFFFFF));
 	}
 }
