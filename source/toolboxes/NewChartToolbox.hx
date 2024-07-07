@@ -22,7 +22,8 @@ class NewChartToolbox extends BaseToolbox {
 	function initialize():Void {
 		this.x = 150;
 		this.y = 250;
-		for (mode in Gamemode.gamemodes) {
+		for (mode in Gamemode.gamemodeArr) {
+			// TODO: how can styles with more than 10 be used?
 			inputChart.dataSource.add(mode.displayName);
 		}
 		inputChart.onChange = function (event:UIEvent) {

@@ -594,6 +594,7 @@ class SongCharts implements ICloneable<SongCharts>
     final chartData = [];
     for (key => notes in chart.notes) {
       final chartKey = new ChartKey(key, Constants.DANCE_COUPLE);
+      if (chartKey.difficulty == "normal") chartKey.difficulty = "medium";
       chartData.push(new SongChart(chartKey, chart.scrollSpeed[key], [for (n in notes) SongNoteData.fromVSlice(conductor, n)], playdata.ratings[key], 0));
     }
     final eventData:Array<SongEventData> = [];
