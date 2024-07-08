@@ -87,6 +87,10 @@ class Note extends FlxSprite
 		animation.add('liftNote-diagonal', [10]);
 		animation.add('tapNote-center', [16]);
 		animation.add('liftNote-center', [17]);
+		animation.add('tapNote-bar', [24]);
+		animation.add('liftNote-bar', [25]);
+		animation.add('tapNote-circle', [30]);
+		animation.add('liftNote-circle', [31]);
 		animation.add('mineNote', [21]);
 		animation.add('nukeNote', [22]);
 
@@ -155,6 +159,8 @@ class Note extends FlxSprite
 
 		if (noteData.kind != "mine" && noteData.kind != "nuke") {
 			angle = gamemode.notes[noteData.data].rot90 * 90;
+		} else {
+			angle = 0;
 		}
 
 

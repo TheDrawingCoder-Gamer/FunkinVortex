@@ -97,7 +97,6 @@ typedef HoldSelect = {
 // we don't have to worry about backspaces ^-^
 
 @:build(haxe.ui.macros.ComponentMacros.build("assets/exclude/data/main-view.xml"))
-@:allow(SongDataEditor)
 class PlayState extends UIState{
 	public var songData:SongData = new SongData("test", "unknown");
 	
@@ -573,39 +572,12 @@ class PlayState extends UIState{
 			}
 			if (FlxG.keys.justPressed.Q)
 			{
-				curKeyType -= 1;
-				curKeyType = cast FlxMath.wrap(curKeyType, 0, Death);
-				switch (curKeyType)
-				{
-					case Normal:
-						noteTypeText.text = "Normal Note";
-					case Lift:
-						noteTypeText.text = "Lift Note";
-					case Mine:
-						noteTypeText.text = "Mine Note";
-					case Death:
-						noteTypeText.text = "Death Note";
-					default:
-						noteTypeText.text = 'Custom Note ${curKeyType - 4}';
-				}
+				changeNoteKind(false);
 			}
 			else if (FlxG.keys.justPressed.E)
 			{
-				curKeyType += 1;
-				curKeyType = cast FlxMath.wrap(curKeyType, 0, 99);
-				switch (curKeyType)
-				{
-					case Normal:
-						noteTypeText.text = "Normal Note";
-					case Lift:
-						noteTypeText.text = "Lift Note";
-					case Mine:
-						noteTypeText.text = "Mine Note";
-					case Death:
-						noteTypeText.text = "Death Note";
-					default:
-						noteTypeText.text = 'Custom Note ${curKeyType - 4}';
-				}
+				changeNoteKind(true);
+
 			}
 			if (FlxG.keys.justPressed.RIGHT)
 			{
@@ -865,6 +837,28 @@ class PlayState extends UIState{
 		currentSongChart.notes.push(goodNote);
 		curHoldSelect = goodNote;
 		updateNotes();
+	}
+
+	private function changeNoteKind(increase:Bool): Void {
+		if (increase) {
+			curKeyType += 1;
+		} else {
+			curKeyType -= 1;
+		}
+		curKeyType = cast FlxMath.wrap(curKeyType, 0, Death);
+		switch (curKeyType)
+		{
+			case Normal:
+				noteTypeText.text = "Normal Note";
+			case Lift:
+				noteTypeText.text = "Lift Note";
+			case Mine:
+				noteTypeText.text = "Mine Note";
+			case Death:
+				noteTypeText.text = "Death Note";
+			default:
+				noteTypeText.text = 'Custom Note ${curKeyType - 4}';
+		}
 	}
 
 	private function changeSnap(increase:Bool)

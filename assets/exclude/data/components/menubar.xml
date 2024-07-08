@@ -20,6 +20,8 @@
 		<menu-separator/>
 		<menu-item id="prevChartMenu" text="Previous Chart" shortcutText="F4"/>
 		<menu-item id="nextChartMenu" text="Next Chart" shortcutText="F5"/>
+		<menu-separator/>
+		<menu-checkbox id="toggleToolboxCharts" text="Charts..." disabled="true"/>
 	</menu>
 	<menu text="Window">
 		<menu-checkbox id="toggleToolboxMetadata" text="Metadata"/>
