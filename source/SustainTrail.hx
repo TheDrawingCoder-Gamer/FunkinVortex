@@ -74,7 +74,7 @@ class SustainTrail extends FlxSprite
    * What part of the trail's end actually represents the end of the note.
    * This can be used to have a little bit sticking out.
    */
-  public var endOffset:Float = 1; // 0.73 is roughly the bottom of the sprite in the normal graphic!
+  public var endOffset:Float = 15 / 16; // 0.73 is roughly the bottom of the sprite in the normal graphic!
 
   /**
    * At what point the bottom for the trail's end should be clipped off.

@@ -44,6 +44,7 @@ import openfl.media.Sound;
 import vortex.data.song.SongData;
 import vortex.data.song.SongData.SongCharts;
 import vortex.data.song.SongData.SongNoteData;
+import vortex.data.song.SongData.SongEventData;
 import vortex.data.song.SongData.ChartKey;
 import lime.ui.FileDialogType;
 import sys.io.File;
@@ -55,6 +56,7 @@ import vortex.data.song.vslice.FNFC;
 import vortex.util.assets.SoundUtil;
 import haxe.io.Bytes;
 import vortex.data.song.Gamemode;
+import vortex.util.SortUtil;
 
 using StringTools;
 
@@ -127,10 +129,12 @@ class PlayState extends UIState{
 	public var strumLine:StrumLine;
 	var curRenderedNotes:FlxTypedSpriteGroup<Note>;
 	var curRenderedSus:FlxTypedSpriteGroup<SusNote>;
+	var curRenderedSelects:FlxTypedSpriteGroup<SelectionSquare>;
 	var snaptext:FlxText;
 	var curSnap:Float = 0;
 	var curKeyType:Int = Normal;
-	var curSelectedNote:Null<SongNoteData> = null;
+	var curSelectedNotes: Array<SongNoteData> = [];
+	var curSelectedEvents: Array<SongEventData> = [];
 	var curHoldSelect:Null<SongNoteData> = null;
 	public static final GRID_SIZE = 40;
 	public static final LINE_SPACING: Int = 40;
@@ -156,9 +160,15 @@ class PlayState extends UIState{
 	var snapInfo:Snaps = Four;
 	var noteTypeText:FlxText;
 	public var noteDisplayDirty: Bool = false;
+	public var notePreviewDirty: Bool = false;
 	public var quantizationDirty: Bool = false;
 	public var chartDirty: Bool = false;
 	public var saveDataDirty: Bool = false;
+	public var commandHistoryDirty: Bool = false;
+	var justAdded: Bool = false;
+
+	var undoHistory:Array<commands.EditorCommand> = [];
+	var redoHistory:Array<commands.EditorCommand> = [];
 
 	public static final infosFont: String = "Roboto Bold";
 
@@ -171,6 +181,7 @@ class PlayState extends UIState{
 		strumLine = new StrumLine();
 		curRenderedNotes = new FlxTypedSpriteGroup<Note>();
 		curRenderedSus = new FlxTypedSpriteGroup<SusNote>();
+		curRenderedSelects = new FlxTypedSpriteGroup<SelectionSquare>();
 		// TODO: Camera scrolling
 		staffLineGroup = new FlxTypedSpriteGroup<Line>();
 		staffLineGroup.setPosition(0, 0);
@@ -180,6 +191,7 @@ class PlayState extends UIState{
 		metadataToolbox = new toolboxes.MetadataToolbox(this);
 		newChartToolbox = new toolboxes.NewChartToolbox(this);
 		buildFileMenu();
+		buildEditMenu();
 		buildChartMenu();
 		buildWindowMenu();
 		//staffLines.screenCenter(X);
@@ -190,6 +202,7 @@ class PlayState extends UIState{
 		chart.add(strumLine);
 		chart.add(curRenderedSus);
 		chart.add(curRenderedNotes);
+		chart.add(curRenderedSelects);
 		#if !electron
 		FlxG.mouse.useSystemCursor = true;
 		#end
@@ -324,6 +337,22 @@ class PlayState extends UIState{
 			loadFromFile(true);
 		}
 	}
+	private function handleEditKeybinds(): Void {
+		if (haxeUIDialogOpen) return;
+		if (FlxG.keys.pressed.CONTROL && FlxG.keys.justPressed.Z) {
+			undoLastCommand();
+		}
+		if (FlxG.keys.pressed.CONTROL && FlxG.keys.justPressed.Y) {
+			redoLastCommand();
+		}
+		if (FlxG.keys.pressed.CONTROL && FlxG.keys.justPressed.A) {
+			if (FlxG.keys.pressed.SHIFT) {
+				deselectNotes();
+			} else {
+				selectAll();
+			}
+		}
+	}
 	private function handleChartKeybinds(): Void {
 		if (haxeUIDialogOpen) return;
 		if (FlxG.keys.justPressed.F4) {
@@ -408,6 +437,20 @@ class PlayState extends UIState{
 				File.saveContent(s, res);
 			});
 		};
+	}
+	private function buildEditMenu(): Void {
+		undoMenu.onClick = function(e:MouseEvent) {
+			undoLastCommand();	
+		};
+		redoMenu.onClick = function(e:MouseEvent) {
+			redoLastCommand();
+		};
+		selectAllMenu.onClick = function(e:MouseEvent) {
+			selectAll();
+		};
+		deselectAllMenu.onClick = function(e:MouseEvent) {
+			deselectNotes();
+		}
 	}
 	private function buildChartMenu(): Void {
 		newChartMenu.onClick = function(e:MouseEvent) {
@@ -582,14 +625,19 @@ class PlayState extends UIState{
 			{
 				changeSnap(false);
 			}
+			/*
 			if (FlxG.keys.justPressed.ESCAPE && curSelectedNote != null)
 			{
 				deselectNote();
 			}
+			*/
 			if (FlxG.keys.justPressed.HOME)
 			{
 				strumLine.y = 0;
 				moveStrumLine(0);
+			}
+			if (FlxG.keys.justPressed.GRAVEACCENT) {
+				convertSelToRoll();
 			}
 			/*
 				if (FlxG.keys.pressed.SHIFT && FlxG.mouse.justPressed)
@@ -622,11 +670,10 @@ class PlayState extends UIState{
 				{
 					for (note in curRenderedNotes.members)
 					{
+						if (note == null || note.noteData == null || !note.exists || !note.alive) continue;
 						if (FlxG.mouse.overlaps(note))
 						{
-							strumLine.y = note.y;
-							var noteData = note.noteData.data;
-							selectNote(noteData);
+							toggleSelect(note.noteData);
 							break;
 						}
 					}
@@ -638,11 +685,10 @@ class PlayState extends UIState{
 				{
 					for (note in curRenderedNotes.members)
 					{
+						if (note == null || note.noteData == null || !note.exists || !note.alive) continue;
 						if (FlxG.mouse.overlaps(note))
 						{
-							strumLine.y = note.y;
-							var noteData = note.noteData.data;
-							addNote(noteData);
+							removeNote(note.noteData);
 							break;
 						}
 					}
@@ -653,25 +699,29 @@ class PlayState extends UIState{
 		}
 		handleMusicPlayback(elapsed);
 		handleFileKeybinds();
+		handleEditKeybinds();
 		handleChartKeybinds();
 
-		if (currentGamemode != null) {
+		if (currentGamemode != null && FocusManager.instance.focus == null) {
 			for (i in 0...noteControls.length)
 			{
 
-				if (!noteControls[i] || FocusManager.instance.focus != null || currentGamemode.noteCount <= i)
+				if (!noteControls[i] || currentGamemode.noteCount <= i)
 					continue;
 				if (FlxG.keys.pressed.CONTROL)
 				{
 					selectNote(i);
 				}
-				else if (FlxG.keys.pressed.GRAVEACCENT)
-				{
-					convertToRoll(i);
-				}
 				else
 				{
-					addNote(i);
+					switch (getNoteAt(i)) {
+						case null:
+							addNote(i);
+							justAdded = true;
+						case note:
+							curHoldSelect = note;
+							justAdded = false;
+					}
 				}
 			}
 			for (i in 0...noteRelease.length)
@@ -680,8 +730,12 @@ class PlayState extends UIState{
 					continue;
 				if (curHoldSelect != null && curHoldSelect.data == i)
 				{
+					if (!justAdded && curHoldSelect.rowTime == getRow(strumLine.y)) {
+						removeNote(curHoldSelect);
+					}
 					curHoldSelect = null;
 				}
+
 			}
 		}
 		handleChart();
@@ -749,48 +803,50 @@ class PlayState extends UIState{
 			case null: return;
 			case note:
 				   if (note.length <= 0) return;
-				   note.isRoll = !note.isRoll;
-				   noteDisplayDirty = true;
+				   performCommand(new commands.ConvertNoteRollCommand([note], !note.isRoll));
 		}
+	}
+
+	function convertSelToRoll(): Void {
+		if (curSelectedNotes.length == 0) return;
+		performCommand(new commands.ConvertNoteRollCommand(curSelectedNotes.clone(), !curSelectedNotes[0].isRoll));
 	}
 
 	private function addNote(id:Int):Void
 	{
 		if (songData == null) return;
 		if (currentSongChart?.notes == null) return;
-		var noteRow = getRow(strumLine.members[id].y);
-		var noteData = id;
-		var noteSus = 0;
-		var noteKindName: Null<String> = 
-			switch (curKeyType) {
-				case Lift: "lift";
-				case Mine: "mine";
-				case Death: "nuke";
-				case Normal: '';
-				// TODO
-				case key: Std.string(key);
-			};
-		var goodNote = new SongNoteData(noteRow, noteData, noteSus, noteKindName);
-		// prefer overloading : )
-		for (note in currentSongChart.notes)
-		{
-			if (note.rowTime == noteRow && note.data == noteData)
-			{
-				currentSongChart.notes.remove(note);
-				/*
-				if (note.kind != noteKindName && )
-				{
-					break;
-				}
-				*/
-				updateNotes();
-				return;
-			}
-		}		
-		currentSongChart.notes.push(goodNote);
-		curHoldSelect = goodNote;
-		updateNotes();
+		switch (getNoteAt(id)) {
+			case null:
+	var noteRow = getRow(strumLine.members[id].y);
+				var noteData = id;
+				var noteSus = 0;
+				var noteKindName: Null<String> = 
+					switch (curKeyType) {
+						case Lift: "lift";
+						case Mine: "mine";
+						case Death: "nuke";
+						case Normal: '';
+						// TODO
+						case key: Std.string(key);
+					};
+				var goodNote = new SongNoteData(noteRow, noteData, noteSus, noteKindName);
+				// jank
+				curHoldSelect = goodNote;
+				// : )
+				performCommand(new commands.AddNotesCommand([goodNote]));
+			case note:
+				performCommand(new commands.RemoveNotesCommand([note]));
+		}
+
 	}
+
+	private function removeNote(note:SongNoteData):Void {
+		if (currentSongChart == null) return;
+		performCommand(new commands.RemoveNotesCommand([note]));
+	}
+
+
 
 	private function changeNoteKind(increase:Bool): Void {
 		if (increase) {
@@ -883,12 +939,24 @@ class PlayState extends UIState{
 		chartDirty = true;
 		noteDisplayDirty = true;
 	}
+	private function selectAll(): Void {
+		performCommand(new commands.SelectAllItemsCommand());
+	}
 
-	private function deselectNote():Void
+	private function deselectNotes():Void
 	{
-		curSelectedNote = null;
 		// sectionInfo.visible = true;
 		// noteInfo.visible = false;
+		performCommand(new commands.DeselectAllItemsCommand());
+	}
+
+	private function deselectNote(id:Int): Void {
+		switch (getNoteAt(id)) {
+			case null: return;
+			case note:
+				   performCommand(new commands.DeselectItemsCommand([note], []));
+
+		}
 	}
 
 	private function getNoteAt(id: Int): Null<SongNoteData> {
@@ -903,27 +971,31 @@ class PlayState extends UIState{
 		}
 		return null;
 	}
+	private function toggleSelectAt(id:Int): Void {
+		switch (getNoteAt(id)) {
+			case null: return;
+			case note:
+				   toggleSelect(note);
+		}
+	}
+	private function toggleSelect(note: SongNoteData): Void {
+		if (curSelectedNotes.fastContains(note)) {
+			performCommand(new commands.DeselectItemsCommand([note], []));
+		} else {
+			performCommand(new commands.SelectItemsCommand([note], []));
+		}
+	}
 	private function selectNote(id:Int):Void
 	{
 		if (songData == null) return;
 		if (currentSongChart?.notes == null) return;
-		var noteRow = getRow(strumLine.members[id].y);
-		var noteData = id;
 
-		for (note in currentSongChart.notes)
-		{
-			if (note.rowTime == noteRow && note.data == noteData)
-			{
-				curSelectedNote = note;
-				// sectionInfo.visible = false;
-				// noteInfo.visible = true;
-				// noteInfo.updateNote(curSelectedNote);
-				updateNotes();
-				// updateNoteUI();
-				// songDataThingie.refreshNoteUI(note);
-
-				return;
-			}
+		switch (getNoteAt(id)) {
+			case null: return;
+			case note:
+				   if (!curSelectedNotes.fastContains(note)) {
+					   performCommand(new commands.SelectItemsCommand([note], []));
+				   }
 		}
 	}
 
@@ -1029,6 +1101,36 @@ class PlayState extends UIState{
 				noteSprite.playNoteAnimation();
 			}
 		}
+
+		handleNoteSelects();
+	}
+
+	private function handleNoteSelects(): Void {
+		for (member in curRenderedSelects.members) {
+			member.kill();
+		}
+
+		// ????????
+		for (note in curSelectedNotes) {
+			if (note == null) continue;
+			var realNote: Note = null;
+			for (renderNote in curRenderedNotes.members) {
+				if (renderNote == null || !renderNote.exists || !renderNote.alive) continue;
+				if (note == renderNote.noteData) {
+					realNote = renderNote;
+					break;
+				}
+			}
+			if (realNote == null) continue;
+			final renderedSel = curRenderedSelects.recycle(SelectionSquare);
+			renderedSel.noteData = note;
+			renderedSel.eventData = null;
+			renderedSel.x = realNote.x;
+			renderedSel.y = realNote.y;
+			renderedSel.width = LINE_SPACING;
+			renderedSel.height = (note.length <= 0) ? LINE_SPACING : ((note.length / Constants.ROWS_PER_STEP + 1) * LINE_SPACING);
+		}
+
 	}
 
 	// kind of cursed
@@ -1097,6 +1199,47 @@ class PlayState extends UIState{
 		}
 	}
 
+	public function sortChartData(): Void {
+		if (currentSongChart == null) return;
+		currentSongChart.notes.insertionSort(SortUtil.noteDataByTime.bind(FlxSort.ASCENDING, _, _));
+		songData.chart.events.insertionSort(SortUtil.eventDataByTime.bind(FlxSort.ASCENDING, _, _));
+	}
+
+	public function performCommand(command:commands.EditorCommand, purgeRedoStack:Bool = true):Void
+	{
+		command.execute(this);
+		if (command.shouldAddToHistory(this)) {
+			undoHistory.push(command);
+			commandHistoryDirty = true;
+		}
+		if (purgeRedoStack) redoHistory = [];
+	}
+
+	function undoCommand(command:commands.EditorCommand):Void {
+		command.undo(this);
+		redoHistory.push(command);
+		commandHistoryDirty = true;
+	}
+
+	public function undoLastCommand():Void {
+		switch (undoHistory.pop()) {
+			case null:
+				trace('No actions to undo.');
+				return;
+			case command:
+				undoCommand(command);
+		}
+	}
+	public function redoLastCommand():Void {
+		switch (redoHistory.pop()) {
+			case null:
+				trace('No actions to redo.');
+				return;
+			case command:
+				performCommand(command, false);
+		}
+	}
+	
 }
 
 class Line extends FlxSpriteGroup
