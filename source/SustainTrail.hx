@@ -80,7 +80,7 @@ class SustainTrail extends FlxSprite
    * At what point the bottom for the trail's end should be clipped off.
    * Used in cases where there's an extra bit of the graphic on the bottom to avoid antialiasing issues with overflow.
    */
-  public var bottomClip:Float = 1;
+  public var bottomClip:Float = 15 / 16;
 
   public var isPixel:Bool;
 
@@ -126,6 +126,7 @@ class SustainTrail extends FlxSprite
     indices = new DrawData<Int>(12, true, TRIANGLE_VERTEX_INDICES);
 
     this.active = true; // This NEEDS to be true for the note to be drawn!
+    this.useFramePixels = true;
   }
 
   function getBaseScrollSpeed()
@@ -232,7 +233,7 @@ class SustainTrail extends FlxSprite
     // We are expecting an image containing 8 horizontal segments, each representing a different colored hold note followed by its end cap.
 
     uvtData[0 * 2] = 0; // 0%/25%/50%/75% of the way through the image
-    uvtData[0 * 2 + 1] = isRoll ? 1 : 0.5; // top bound
+    uvtData[0 * 2 + 1] = 1; // top bound
     // Top left
 
     // Top right
@@ -241,7 +242,7 @@ class SustainTrail extends FlxSprite
 
     // Bottom left
     uvtData[2 * 2] = uvtData[0 * 2]; // 0%/25%/50%/75% of the way through the image
-    uvtData[2 * 2 + 1] = isRoll ? 0.5 : 0; // bottom bound
+    uvtData[2 * 2 + 1] = 0; // bottom bound
 
     // Bottom right
     uvtData[3 * 2] = uvtData[1 * 2]; // 12.5%/37.5%/62.5%/87.5% of the way through the image (1/8th past the top left)
@@ -267,7 +268,7 @@ class SustainTrail extends FlxSprite
     // === END CAP UVs ===
     // Top left
     uvtData[4 * 2] = 0.5; // 12.5%/37.5%/62.5%/87.5% of the way through the image (1/8th past the top left of hold)
-    uvtData[4 * 2 + 1] = isRoll ? 0.5 : 0;
+    uvtData[4 * 2 + 1] = 0;
 
     // Top right
     uvtData[5 * 2] = 1; // right edge 
@@ -275,7 +276,7 @@ class SustainTrail extends FlxSprite
 
     // Bottom left
     uvtData[6 * 2] = uvtData[4 * 2]; // center
-    uvtData[6 * 2 + 1] = bottomClip * (isRoll ? 1 : 0.5); // bottom bound
+    uvtData[6 * 2 + 1] = bottomClip; // bottom bound
 
     // Bottom right
     uvtData[7 * 2] = uvtData[5 * 2]; // right Edge 

@@ -171,9 +171,7 @@ class PlayState extends UIState{
 		strumLine = new StrumLine();
 		curRenderedNotes = new FlxTypedSpriteGroup<Note>();
 		curRenderedSus = new FlxTypedSpriteGroup<SusNote>();
-		// make it ridulously big
 		// TODO: Camera scrolling
-		// staffLines = new FlxSprite().makeGraphic(FlxG.width, 1000 * LINE_SPACING, FlxColor.BLACK);
 		staffLineGroup = new FlxTypedSpriteGroup<Line>();
 		staffLineGroup.setPosition(0, 0);
 		strumLine.setup(Gamemode.gamemodes["dance-single"]);
@@ -225,9 +223,6 @@ class PlayState extends UIState{
 		selectBox.visible = false;
 		selectBox.scrollFactor.set();
 		// addUI();
-		add(strumLine);
-		add(curRenderedNotes);
-		add(curRenderedSus);
 		add(chart);
 		add(snaptext);
 		add(curMeasureTxt);
@@ -670,12 +665,10 @@ class PlayState extends UIState{
 				{
 					selectNote(i);
 				}
-				/*
-				else if (FlxG.keys.pressed.A)
+				else if (FlxG.keys.pressed.GRAVEACCENT)
 				{
 					convertToRoll(i);
 				}
-				*/
 				else
 				{
 					addNote(i);
@@ -707,13 +700,6 @@ class PlayState extends UIState{
 		if (change != 0)
 			strumLine.y = Math.round(strumLine.y / curSnap) * curSnap;
 		var strumRow = getRow(strumLine.y);
-		/*
-		if (curSelectedNote != null)
-		{
-			curSelectedNote.length = strumTime - curSelectedNote.time;
-			curSelectedNote.length = FlxMath.bound(curSelectedNote.length, 0);
-		}
-		*/
 		if (curHoldSelect != null)
 		{
 			curHoldSelect.length = strumRow - curHoldSelect.rowTime;
@@ -757,49 +743,16 @@ class PlayState extends UIState{
 				m += 1;
 		}
 	}
-	/*
-	function convertToRoll(id:Int)
+	function convertToRoll(id:Int): Void
 	{
-		selectNote(id);
-		var sections = [];
-		// nothing fancy, just generate rolls
-		if (curSelectedNote != null)
-		{
-			if (curSelectedNote[2] > 0)
-			{
-				for (sussy in 0...Math.floor(curSelectedNote[2] / Conductor.stepCrochet))
-				{
-					var goodSection = getSussySectionFromY(getSussyYPos(curSelectedNote[0] + sussy * Conductor.stepCrochet));
-					sections.push(goodSection);
-					var noteData = id;
-					if (_song.notes[goodSection].mustHitSection)
-					{
-						var sussyInfo = 0;
-						if (noteData > 3)
-						{
-							sussyInfo = noteData % 4;
-						}
-						else
-						{
-							sussyInfo = noteData + 4;
-						}
-						noteData = sussyInfo;
-					}
-					_song.notes[goodSection].sectionNotes.push([
-						curSelectedNote[0] + sussy * Conductor.stepCrochet,
-						noteData,
-						0,
-						curSelectedNote[3],
-						curSelectedNote[4]
-					]);
-				}
-			}
-			curSelectedNote[2] = 0;
+		switch (getNoteAt(id)) {
+			case null: return;
+			case note:
+				   if (note.length <= 0) return;
+				   note.isRoll = !note.isRoll;
+				   noteDisplayDirty = true;
 		}
-		deselectNote();
-		updateNotes(sections);
 	}
-	*/
 
 	private function addNote(id:Int):Void
 	{
@@ -938,6 +891,18 @@ class PlayState extends UIState{
 		// noteInfo.visible = false;
 	}
 
+	private function getNoteAt(id: Int): Null<SongNoteData> {
+		if (songData == null) return null;
+		if (currentSongChart?.notes == null) return null;
+		final noteRow = getRow(strumLine.members[id].y);
+		final noteData = id;
+		for (note in currentSongChart.notes) {
+			if (note.rowTime == noteRow && note.data == noteData) {
+				return note;
+			}
+		}
+		return null;
+	}
 	private function selectNote(id:Int):Void
 	{
 		if (songData == null) return;
@@ -1028,6 +993,7 @@ class PlayState extends UIState{
 				holdNoteSprite.kill();
 			} else {
 				displayedHoldNoteData.push(holdNoteSprite.noteData);
+				holdNoteSprite.sustainLength = holdNoteSprite.noteData.length;
 				holdNoteSprite.updateHoldNotePosition();
 			}
 		}
@@ -1035,7 +1001,8 @@ class PlayState extends UIState{
 		for (noteData in currentSongChart.notes) {
 			if (noteData == null) continue;
 
-			if (displayedNoteData.fastContains(noteData)) {
+
+			if (displayedNoteData.fastContains(noteData) && (noteData.length == 0 || displayedHoldNoteData.fastContains(noteData))) {
 				continue;
 			}
 
@@ -1051,6 +1018,8 @@ class PlayState extends UIState{
 				) {
 				final holdNoteSprite = curRenderedSus.recycle(() -> new SusNote(this));
 				noteSprite.childSus = holdNoteSprite;
+
+				holdNoteSprite.parentState = this;
 
 				holdNoteSprite.noteData = noteSprite.noteData;
 
