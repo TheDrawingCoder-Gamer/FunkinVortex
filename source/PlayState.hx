@@ -175,6 +175,7 @@ class PlayState extends UIState{
 
 	var metadataToolbox:toolboxes.MetadataToolbox; 
 	var newChartToolbox:toolboxes.NewChartToolbox;
+	var chartsToolbox:toolboxes.ChartsToolbox;
 
 	override public function create()
 	{
@@ -191,6 +192,7 @@ class PlayState extends UIState{
 
 		metadataToolbox = new toolboxes.MetadataToolbox(this);
 		newChartToolbox = new toolboxes.NewChartToolbox(this);
+		chartsToolbox = new toolboxes.ChartsToolbox(this);
 		buildFileMenu();
 		buildEditMenu();
 		buildChartMenu();
@@ -306,13 +308,7 @@ class PlayState extends UIState{
 			audioInstTrackData = File.getBytes(haxe.io.Path.join([haxe.io.Path.directory(path), songData.sm.songFile]));
 			playerVocalTrackData = null;
 			oppVocalTrackData = null;
-			Conductor.instance.mapTimeChanges(songData.timeChanges);
-			selectedChart = 0;
-			reloadInstrumental();
-			metadataToolbox.refresh();
-			noteDisplayDirty = true;
-			chartDirty = true;
-			saveDataDirty = false;
+			refreshFromFile();
 		} catch (e) {
 			trace(e);
 		}
@@ -339,18 +335,21 @@ class PlayState extends UIState{
 			audioInstTrackData = vortexc.instrumental;
 			playerVocalTrackData = vortexc.playerVocals;
 			oppVocalTrackData = vortexc.opponentVocals;
-			Conductor.instance.mapTimeChanges(songData.timeChanges);
-			// ?
-			selectedChart = 0;
-			reloadInstrumental();
-			// songDataThingie.refreshUI(songData);
-			metadataToolbox.refresh();
-			noteDisplayDirty = true;
-			chartDirty = true;
-			saveDataDirty = false;
+			refreshFromFile();
 		} catch (e) {
 			trace(e);
 		}
+	}
+	private function refreshFromFile(): Void {
+		if (songData == null) return;
+		Conductor.instance.mapTimeChanges(songData.timeChanges);
+		selectedChart = 0;
+		reloadInstrumental();
+		metadataToolbox.refresh();
+		chartsToolbox.refresh();
+		noteDisplayDirty = true;
+		chartDirty = true;
+		saveDataDirty = false;
 	}
 	private function toVortexC(): VortexC {
 		return new VortexC(songId, songData, audioInstTrackData, playerVocalTrackData, oppVocalTrackData);
@@ -502,6 +501,13 @@ class PlayState extends UIState{
 		};
 		nextChartMenu.onClick = function(e:MouseEvent) {
 			changeDifficulty(true);
+		};
+		toggleToolboxCharts.onChange = function (event:UIEvent) {
+			if (event.target.value) {
+				chartsToolbox.showDialog(false);
+			} else {
+				chartsToolbox.hideDialog(DialogButton.CANCEL);
+			}
 		};
 	}
 	private function buildWindowMenu(): Void {
@@ -977,6 +983,7 @@ class PlayState extends UIState{
 		if (songData == null) return;
 		selectedChart = id;
 		metadataToolbox.refresh();
+		chartsToolbox.refresh();
 		chartDirty = true;
 		noteDisplayDirty = true;
 	}

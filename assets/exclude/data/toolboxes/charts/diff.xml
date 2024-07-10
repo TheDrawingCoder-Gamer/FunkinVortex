@@ -1,0 +1,6 @@
+<vbox>
+	<label id="diffName" text="Unknown Diff"/>
+	<vbox id="diffCharts">
+		
+	</vbox>
+</vbox>

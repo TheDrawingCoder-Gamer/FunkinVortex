@@ -1,0 +1,5 @@
+<collapsible-dialog id="dialogCharts" title="Charts" width="345" height="315">
+	<scrollview id="chartMembers" width="100%" height="100%">
+		
+	</scrollview>
+</collapsible-dialog>
