@@ -36,7 +36,7 @@
 	<menu text="Window">
 		<menu-checkbox id="toggleToolboxMetadata" text="Metadata"/>
 		<menu-checkbox id="toggleToolboxNoteData" text="Note Data" disabled="true"/>
-		<menu-checkbox id="toggleToolboxOffsets" text="Offsets" disabled="true"/>
+		<menu-checkbox id="toggleToolboxOffsets" text="Offsets"/>
 		<menu-checkbox id="toggleToolboxEventData" text="Event Data" disabled="true"/>
 		</menu>
 	<menu text="Tempo">

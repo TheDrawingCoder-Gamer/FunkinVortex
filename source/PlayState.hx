@@ -176,6 +176,7 @@ class PlayState extends UIState{
 	var metadataToolbox:toolboxes.MetadataToolbox; 
 	var newChartToolbox:toolboxes.NewChartToolbox;
 	var chartsToolbox:toolboxes.ChartsToolbox;
+	var offsetsToolbox:toolboxes.OffsetsToolbox;
 
 	override public function create()
 	{
@@ -193,6 +194,7 @@ class PlayState extends UIState{
 		metadataToolbox = new toolboxes.MetadataToolbox(this);
 		newChartToolbox = new toolboxes.NewChartToolbox(this);
 		chartsToolbox = new toolboxes.ChartsToolbox(this);
+		offsetsToolbox = new toolboxes.OffsetsToolbox(this);
 		buildFileMenu();
 		buildEditMenu();
 		buildChartMenu();
@@ -347,6 +349,7 @@ class PlayState extends UIState{
 		reloadInstrumental();
 		metadataToolbox.refresh();
 		chartsToolbox.refresh();
+		offsetsToolbox.refresh();
 		noteDisplayDirty = true;
 		chartDirty = true;
 		saveDataDirty = false;
@@ -516,6 +519,13 @@ class PlayState extends UIState{
 				metadataToolbox.showDialog(false);
 			} else {
 				metadataToolbox.hideDialog(DialogButton.CANCEL);
+			}
+		};
+		toggleToolboxOffsets.onChange = function (event:UIEvent) {
+			if (event.target.value) {
+				offsetsToolbox.showDialog(false);
+			} else {
+				offsetsToolbox.hideDialog(DialogButton.CANCEL);
 			}
 		};
 	}
