@@ -131,6 +131,8 @@ class PlayState extends UIState{
 	var curRenderedNotes:FlxTypedSpriteGroup<Note>;
 	var curRenderedSus:FlxTypedSpriteGroup<SusNote>;
 	var curRenderedSelects:FlxTypedSpriteGroup<SelectionSquare>;
+	var curRenderedTempos:FlxTypedSpriteGroup<ChartTooltip>;
+
 	var snaptext:FlxText;
 	var curSnap:Float = 0;
 	var curKeyType:Int = Normal;
@@ -185,6 +187,7 @@ class PlayState extends UIState{
 		curRenderedNotes = new FlxTypedSpriteGroup<Note>();
 		curRenderedSus = new FlxTypedSpriteGroup<SusNote>();
 		curRenderedSelects = new FlxTypedSpriteGroup<SelectionSquare>();
+		curRenderedTempos = new FlxTypedSpriteGroup<ChartTooltip>();
 		// TODO: Camera scrolling
 		staffLineGroup = new FlxTypedSpriteGroup<Line>();
 		staffLineGroup.setPosition(0, 0);
@@ -208,6 +211,7 @@ class PlayState extends UIState{
 		chart.add(curRenderedSus);
 		chart.add(curRenderedNotes);
 		chart.add(curRenderedSelects);
+		chart.add(curRenderedTempos);
 		#if !electron
 		FlxG.mouse.useSystemCursor = true;
 		#end
@@ -848,10 +852,12 @@ class PlayState extends UIState{
 			if (newMeasure) {
 				i = 0;
 			}
-			var line = staffLineGroup.recycle(() -> new Line(Std.int(strumLine.width)));
+			var line = staffLineGroup.recycle(() -> new Line());
+			line.lineSprite.setGraphicSize(Std.int(strumLine.width), 5);
+			line.lineSprite.updateHitbox();
 			line.lineSprite.color = lineColor;
 			line.x = strumLine.x;
-			line.y = y;
+			line.y = y + LINE_SPACING / 2;
 			if (newMeasure)
 				line.setText(Std.string(m));
 		
@@ -1091,6 +1097,21 @@ class PlayState extends UIState{
 		}
 
 		drawChartLines();
+		updateTempoTooltips();
+	}
+	private function updateTempoTooltips(): Void {
+		if (songData == null) return;
+		for (tooltip in curRenderedTempos) {
+			tooltip.kill();
+		}	
+		for (timeChange in songData.timeChanges) {
+			final tip = curRenderedTempos.recycle(ChartTooltip);
+			tip.backdrop.flipX = true;
+			tip.backdrop.color = FlxColor.RED;
+			tip.text.text = Std.string(timeChange.bpm);
+			tip.x = strumLine.x + strumLine.width; 
+			tip.y = getYFromRow(timeChange.rowTime);
+		}
 	}
 	public function updateNotes(): Void {
 		noteDisplayDirty = true;
@@ -1311,10 +1332,10 @@ class Line extends FlxSpriteGroup
 {
 	public final lineSprite:FlxSprite;
 	public final text:FlxText;
-	public function new(width: Int, ?x:Float = 0, ?y:Float = 0)
+	public function new(?x:Float = 0, ?y:Float = 0)
 	{
 		super(x, y);
-		lineSprite = new FlxSprite(x, y).makeGraphic(width, 5, FlxColor.WHITE);
+		lineSprite = new FlxSprite(x, y).makeGraphic(5, 5, FlxColor.WHITE);
 		text = new FlxText(x, y, 0, '', 30);
 		text.x -= text.width + 20;
 		text.y -= text.height / 2;
