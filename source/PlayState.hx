@@ -604,6 +604,13 @@ class PlayState extends UIState{
 	private function stopExistingVocals():Void {
 		audioVocalTrackGroup.clear();
 	}
+
+	public function addChart(chart: SongChart): Void {
+		// : )
+		if (songData == null) return;
+		songData.chart.charts.push(chart);
+		chartsToolbox.refresh();
+	}
 	var selecting:Bool = false;
 
 	override public function update(elapsed:Float)

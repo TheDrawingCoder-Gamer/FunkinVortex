@@ -49,6 +49,7 @@ class NewChartToolbox extends BaseToolbox {
 			final key = new ChartKey(diff, currentGamemode.id);
 			final chart = new SongChart(key, 1.0, [], inputFNFRating.value, inputStepmaniaRating.value);
 			playstate.songData.chart.charts.push(chart);
+			playstate.chartsToolbox.refresh();
 			playstate.loadChart(playstate.songData.chart.charts.length - 1);
 			hideDialog(DialogButton.SAVE);
 		}

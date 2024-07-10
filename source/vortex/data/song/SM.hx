@@ -5,6 +5,7 @@ import vortex.data.song.SongData.SongStop;
 import vortex.data.song.SongData.SongNoteData;
 import vortex.data.song.SongData.SongChart;
 import vortex.data.song.SongData.ChartKey;
+import vortex.util.SortUtil;
 import flixel.util.FlxSort;
 // Static extension to convert SongData to and from SM
 

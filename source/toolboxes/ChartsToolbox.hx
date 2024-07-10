@@ -4,6 +4,8 @@ import vortex.data.song.SongData.ChartKey;
 import haxe.ui.events.MouseEvent;
 import haxe.ui.events.UIEvent;
 import haxe.ui.components.Button;
+import vortex.util.SortUtil;
+import flixel.util.FlxSort;
 
 
 @:access(PlayState)
@@ -43,7 +45,9 @@ class ChartsToolbox extends BaseToolbox {
 				components.set(chart.chartKey, new ChartDifficulty(playstate, '${chart.chartKey.gamemode} - ${chart.chartKey.difficulty}', chart.chartKey, [id]));
 			}
 		}
-		for (_ => component in components) {
+		final members = components.iterator().array();
+		members.sort((a, b) -> SortUtil.chartKey(FlxSort.ASCENDING, a.chartKey, b.chartKey));
+		for (component in members) {
 			chartMembers.addComponent(component);
 		}
 	}
