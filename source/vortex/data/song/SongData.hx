@@ -57,11 +57,16 @@ class SongData implements ICloneable<SongData>
 
   public var timeChanges:Array<SongTimeChange>;
 
+  @:optional
+  public var stops:Array<SongStop>;
+
   public var chart: SongCharts;
 
   @:optional
   public var variation: Null<String>;
 
+  @:optional
+  public var sm: SongSMData;
 
 
   public function new(songName:String, artist:String, ?variation:String)
@@ -71,6 +76,7 @@ class SongData implements ICloneable<SongData>
     this.artist = artist;
     this.offsets = new SongOffsets();
     this.timeChanges = [new SongTimeChange(0, 100)];
+    this.stops = [];
     this.playData = new SongPlayData();
     this.playData.songVariations = [];
     this.playData.difficulties = [];
@@ -81,6 +87,7 @@ class SongData implements ICloneable<SongData>
     // Variation ID.
     this.variation = (variation == null) ? Constants.DEFAULT_VARIATION : variation;
     this.chart = new SongCharts([], []);
+    this.sm = new SongSMData();
   }
 
   /**
@@ -98,6 +105,7 @@ class SongData implements ICloneable<SongData>
     result.generatedBy = this.generatedBy;
     result.chart = this.chart.clone();
     result.charter = this.charter;
+    result.sm = this.sm.clone();
 
     return result;
   }
@@ -157,147 +165,6 @@ class SongData implements ICloneable<SongData>
     return {metadata: metadata, chartData: daChart };
   }
 
-  // Exports a Stepmania file : )
-  public function toSM(songFile:String): String {
-    final buf = new StringBuf();
-    buf.add('#TITLE:$songName;\n');
-    buf.add('#ARTIST:$artist;\n');
-    if (charter != null)
-      buf.add('#CREDIT:$charter;\n');
-    buf.add('#SELECTABLE:YES;\n');
-    final bpmChanges: Array<String> = 
-      [for (change in timeChanges) {a: change.rowTime / Constants.ROWS_PER_BEAT, b: change.bpm}].map(it -> '${it.a}=${it.b}');
-    buf.add('#BPMS:${bpmChanges.join(',')};\n');
-    buf.add('#MUSIC:$songFile;\n');
-    for (c in chart.charts) {
-      buf.add('// -- ${c.chartKey.gamemode} - ${c.chartKey.difficulty}\n');
-      buf.add('#NOTES:\n');
-      buf.add('    ${c.chartKey.gamemode}:\n');
-      final goodDiff = c.chartKey.difficulty == 'normal' ? 'medium' : c.chartKey.difficulty;
-      final weirdDiff = switch (goodDiff) {
-        case "medium" | "hard" | "easy" | "beginning" | "challenge" | "edit": false;
-        default: true;
-      }
-      buf.add('    ${weirdDiff ? goodDiff : ""}:\n');
-      buf.add('    ${weirdDiff ? "Edit" : goodDiff.capitalizeFirst()}:\n');
-      buf.add('    ${c.stepmaniaRating}:\n');
-      buf.add('    0,0,0,0,0:\n');
-      c.notes.insertionSort((x, y) -> FlxSort.byValues(FlxSort.ASCENDING, x.rowTime, y.rowTime));
-      final lastNote = c.notes[c.notes.length - 1];
-      // TODO: detect sustain correctly
-      final sectionCount = Math.ceil(lastNote.rowTime + lastNote.length / Constants.ROWS_PER_MEASURE);
-      final gamemodeNoteCount = Gamemode.gamemodes[c.chartKey.gamemode]?.noteCount ?? 4;
-      var curNote: Int = 0;
-      var strumEnds: Array<Int> = [for (i in 0...gamemodeNoteCount) -1];
-      for (sect in 0...sectionCount) {
-        if (sect != 0) buf.add(',\n');
-        var quant: Int = 0; // 4
-        final minNote: Int = curNote;
-        var maxNote: Int = curNote;
-        var stinkyNote: Int = minNote;
-        while (true) {
-          if (stinkyNote >= c.notes.length) {
-            maxNote = c.notes.length;
-            break;
-          }
-          // ???
-          final section = Math.floor(c.notes[stinkyNote].rowTime / Constants.ROWS_PER_MEASURE);
-          if (section > sect) {
-            maxNote = stinkyNote;
-            break;
-          } else {
-            for (q in 0...Constants.QUANT_ARRAY.length) {
-              final daQuant = Constants.QUANT_ARRAY[q];
-              if (c.notes[stinkyNote].rowTime % Math.round(Constants.ROWS_PER_MEASURE / daQuant) == 0) {
-                if (q > quant)
-                  quant = q;
-                break;
-              }
-            }
-            final goodTime = c.notes[stinkyNote].rowTime + c.notes[stinkyNote].length;
-            if (goodTime < (sect + 1) * Constants.ROWS_PER_MEASURE) {
-              for (q in 0...Constants.QUANT_ARRAY.length) {
-                final daQuant = Constants.QUANT_ARRAY[q];
-                if (goodTime % Math.round(Constants.ROWS_PER_MEASURE / daQuant) == 0) {
-                  if (q > quant) 
-                    quant = q;
-                  break;
-                }
-              }
-            }
-          }
-          stinkyNote += 1;
-        }
-        curNote = maxNote;
-        final sectOffset = sect * Constants.ROWS_PER_MEASURE;
-        for (note in strumEnds) {
-          if (note < sectOffset || note >= (sect + 1) * Constants.ROWS_PER_MEASURE) continue;
-          for (q in 0...Constants.QUANT_ARRAY.length) {
-            final daQuant = Constants.QUANT_ARRAY[q];
-            if (note % Math.round(Constants.ROWS_PER_MEASURE / daQuant) == 0) {
-              if (q > quant)
-                quant = q;
-              break;
-            }
-          }
-        }
-        final goodQuant = Constants.QUANT_ARRAY[quant];
-        final finalNotes: Array<Array<String>> = [for (i in 0...goodQuant) [for (j in 0...gamemodeNoteCount) "0"]];
-        for (i in minNote...maxNote) {
-          // freaky....
-          final daNote = c.notes[i];
-          final noteIdx = Math.round(goodQuant * (daNote.rowTime - sectOffset) / Constants.ROWS_PER_MEASURE);
-          finalNotes[noteIdx][daNote.data] = 
-            if (daNote.length > 0)
-                if (daNote.isRoll) 
-                  "4"
-                else
-                  "2"
-            else
-              switch (daNote.kind) {
-                // ?
-                case "mine" | "nuke": 
-                  "M";
-                case "lift":
-                  "L";
-                case "fake":
-                  "F";
-                default:
-                  "1";
-              }
-          ;
-          if (daNote.length > 0) {
-            // jank
-            // TODO: if u place a note between this prob breaks : )
-            // TODO: this breaks if you go between sections : )
-            
-            final endIdx = Math.round(goodQuant * (daNote.rowTime + daNote.length - sectOffset) / Constants.ROWS_PER_MEASURE);
-            if (endIdx > goodQuant) {
-              strumEnds[daNote.data] = daNote.rowTime + daNote.length;
-            } else {
-              finalNotes[endIdx][daNote.data] = "3";
-            }
-          }
-        }
-        for (i => possibleStrum in strumEnds) {
-          final goodStrum = possibleStrum - sectOffset;
-          if (goodStrum < 0) continue;
-          if (goodStrum > Constants.ROWS_PER_MEASURE) continue;
-          final strumEndIdx = Math.round((goodQuant * goodStrum) / Constants.ROWS_PER_MEASURE);
-          finalNotes[strumEndIdx][i] = "3";
-
-
-        }
-        buf.add(finalNotes.map(it -> it.join("")).join("\n"));
-        buf.add("\n");
-
-      }
-      buf.add(";\n");
-
-    }
-
-    return buf.toString();
-  }
   /**
    * Produces a string representation suitable for debugging.
    */
@@ -393,6 +260,21 @@ class SongTimeChange implements ICloneable<SongTimeChange>
 
   public function stepsPerMeasure(): Int {
     return Std.int(timeSignatureNum / timeSignatureDen * Constants.STEPS_PER_BEAT * Constants.STEPS_PER_BEAT);
+  }
+}
+
+class SongStop {
+  @:alias("t")
+  public var rowTime: Int;
+  @:alias("l")
+  public var length: Float;
+
+  public function new(rowTime:Int, length:Float) {
+    this.rowTime = rowTime;
+    this.length = length;
+  }
+  public function clone():SongStop {
+    return new SongStop(rowTime, length);
   }
 }
 
@@ -547,13 +429,13 @@ class SongPlayData implements ICloneable<SongPlayData>
   public var previewStart:Int;
 
   /**
-   * The end time for the audio preview in Freeplay.
-   * Defaults to 15 seconds in.
+   * The length for the audio preview in Freeplay.
+   * Defaults to 15 seconds.
    * @since `2.2.2`
    */
   @:optional
   @:default(15000)
-  public var previewEnd:Int;
+  public var previewLength:Int;
 
   public function new()
   {
@@ -573,7 +455,7 @@ class SongPlayData implements ICloneable<SongPlayData>
     result.ratings = this.ratings.clone();
     result.album = this.album;
     result.previewStart = this.previewStart;
-    result.previewEnd = this.previewEnd;
+    result.previewLength = this.previewLength;
 
     return result;
   }
@@ -595,7 +477,7 @@ class SongPlayData implements ICloneable<SongPlayData>
     result.noteStyle = raw.noteStyle;
     result.album = raw.album;
     result.previewStart = raw.previewStart;
-    result.previewEnd = raw.previewEnd;
+    result.previewLength = raw.previewEnd - raw.previewStart;
     result.ratings = raw.ratings.clone();
     for (key => _ in raw.ratings) {
       result.stepmaniaRatings.set(key, 0);
@@ -612,7 +494,7 @@ class SongPlayData implements ICloneable<SongPlayData>
     result.noteStyle = noteStyle;
     result.album = album;
     result.previewStart = previewStart;
-    result.previewEnd = previewEnd;
+    result.previewEnd = previewStart + previewLength;
     result.ratings = ratings.clone();
     return result;
   }
@@ -1095,12 +977,13 @@ class SongNoteDataRaw implements ICloneable<SongNoteDataRaw>
     return this.kind = value;
   }
 
-  public function new(time:Int, data:Int, length:Int = 0, kind:String = '')
+  public function new(time:Int, data:Int, length:Int = 0, kind:String = '', isRoll: Bool = false)
   {
     this.rowTime = time;
     this.data = data;
     this.length = length;
     this.kind = kind;
+    this.isRoll = isRoll;
   }
 
   /**
@@ -1179,9 +1062,9 @@ class SongNoteDataRaw implements ICloneable<SongNoteDataRaw>
 @:forward
 abstract SongNoteData(SongNoteDataRaw) from SongNoteDataRaw to SongNoteDataRaw
 {
-  public function new(time:Int, data:Int, length:Int = 0, kind:String = '')
+  public function new(time:Int, data:Int, length:Int = 0, kind:String = '', isRoll: Bool = false)
   {
-    this = new SongNoteDataRaw(time, data, length, kind);
+    this = new SongNoteDataRaw(time, data, length, kind, isRoll);
   }
 
   public static function buildDirectionName(data:Int, strumlineSize:Int = 4):String
@@ -1325,4 +1208,68 @@ class ChartKey {
   public function toString(): String {
     return '${gamemode} - ${difficulty}';
   }
+}
+
+/**
+  Data that is exclusive to the SM format. Kept so loading and resaving is as lossless as possible.
+  Extracted out so its easier to make a default version.
+  */
+class SongSMData {
+  @:optional
+  public var subtitle:Null<String> = null;
+  @:optional
+  public var titleTranslit:Null<String> = null; 
+  @:optional
+  public var subtitleTranslit:Null<String> = null;
+  @:optional
+  public var genre:Null<String> = null;
+  @:optional
+  public var background: Null<String> = null;
+  @:optional
+  public var banner: Null<String> = null;
+  @:optional
+  public var lyricsPath:Null<String> = null;
+  @:optional
+  public var cdTitle:Null<String> = null;
+  @:optional
+  @:default(true)
+  public var selectable:Bool = true;
+  @:optional
+  public var bgChanges:Null<String> = null;
+  @:optional
+  public var fgChanges:Null<String> = null;
+
+  @:optional
+  public var songFile:Null<String> = null;
+
+  @:optional
+  public var displayBpm:Null<String> = null;
+
+  @:default([])
+  @:optional
+  public var extraFields:Map<String, String> = [];
+
+  public function new() {}
+
+  public function clone(): SongSMData {
+    final res = new SongSMData();
+    res.subtitle = this.subtitle;
+    res.titleTranslit = this.titleTranslit;
+    res.subtitleTranslit = this.subtitleTranslit;
+    res.genre = this.genre;
+    res.background = this.background;
+    res.banner = this.banner;
+    res.lyricsPath = this.lyricsPath;
+    res.cdTitle = this.cdTitle;
+    res.selectable = this.selectable;
+    res.bgChanges = this.bgChanges;
+    res.fgChanges = this.fgChanges;
+    res.songFile = this.songFile;
+    res.displayBpm = this.displayBpm;
+
+    res.extraFields = this.extraFields.clone();
+
+    return res;
+  }
+  
 }

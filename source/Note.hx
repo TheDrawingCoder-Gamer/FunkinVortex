@@ -165,7 +165,7 @@ class Note extends FlxSprite
 
 
 		// 192
-		noteQuant = 10;
+		noteQuant = 8;
 		final row = noteData.rowTime;
 		for (quant in 0...Constants.QUANT_ARRAY.length) {
 			final daQuant = Constants.QUANT_ARRAY[quant];
@@ -196,14 +196,14 @@ class Note extends FlxSprite
 				colorSwap.hue = 320 / 360.0;
 			// 32
 			case 5:
-				colorSwap.hue = 20 / 360.0;
+				colorSwap.hue = 40 / 360.0;
 			// 48
 			case 6:
 				colorSwap.hue = 170 / 360.0;
 			// 64
 			case 7:
 				colorSwap.hue = 120 / 360.0;
-			// 20, 96, 192
+			// 96, 192
 			case 8:
 				colorSwap.saturation = -1;
 				colorSwap.brightness = -0.2;

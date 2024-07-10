@@ -58,6 +58,7 @@ import haxe.io.Bytes;
 import vortex.data.song.Gamemode;
 import vortex.util.SortUtil;
 
+using vortex.data.song.SM;
 using StringTools;
 
 // import bulbytools.Assets;
@@ -290,6 +291,47 @@ class PlayState extends UIState{
 		final vortexc = toVortexC(); 
 		vortexc.save(s);
 	}
+	private function importSM(): Void {
+		var future = FNFAssets.askToBrowseForPath("sm", "Import SM File");
+		future.onComplete(function(s:String) {
+			importSMFromPath(s);
+		});
+	}
+	private function importSMFromPath(path:String): Void {
+		// : )
+		try {
+			final data = File.getContent(path);
+			songData = SM.fromSM(data);
+			songId = songData.songName.toString();
+			audioInstTrackData = File.getBytes(haxe.io.Path.join([haxe.io.Path.directory(path), songData.sm.songFile]));
+			playerVocalTrackData = null;
+			oppVocalTrackData = null;
+			Conductor.instance.mapTimeChanges(songData.timeChanges);
+			selectedChart = 0;
+			reloadInstrumental();
+			metadataToolbox.refresh();
+			noteDisplayDirty = true;
+			chartDirty = true;
+			saveDataDirty = false;
+		} catch (e) {
+			trace(e);
+		}
+	}
+	private function exportSM(): Void {
+		if (songData == null) return;
+		var future = FNFAssets.askToBrowseForPath("sm", "Export SM File", FileDialogType.SAVE);
+		future.onComplete(function(s:String) {
+			exportSMToPath(s); 
+		});
+	}
+	private function exportSMToPath(path: String):Void {
+		try {
+			File.saveContent(path, songData.toSM());
+
+		} catch (e) {
+			trace(e);
+		}
+	}
 	private function loadFromVortexC(vortexc: VortexC): Void {
 		try {
 			songData = vortexc.songData;
@@ -429,13 +471,12 @@ class PlayState extends UIState{
 				reloadInstrumental();
 			});
 		};
+
 		exportStepmaniaMenu.onClick = function(e: MouseEvent) {
-			var future = FNFAssets.askToBrowseForPath("sm", "Save SM file", FileDialogType.SAVE);
-			future.onComplete(function(s:String)
-			{
-				final res = songData.toSM(songData.songName + ".ogg");
-				File.saveContent(s, res);
-			});
+			exportSM();
+		};
+		importStepmaniaMenu.onClick = function(e:MouseEvent) {
+			importSM();
 		};
 	}
 	private function buildEditMenu(): Void {

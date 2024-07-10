@@ -20,6 +20,7 @@ class FileUtil
 {
   public static final FILE_FILTER_FNFC:FileFilter = new FileFilter("Friday Night Funkin' Chart (.fnfc)", "*.fnfc");
   public static final FILE_FILTER_VORTEXC:FileFilter = new FileFilter("Funkin Vortex Chart (.vortexc)", "*.vortexc");
+  public static final FILE_FILTER_SM:FileFilter = new FileFilter("Stepmania Chart (.sm)", "*.sm");
   public static final FILE_FILTER_JSON:FileFilter = new FileFilter("JSON Data File (.json)", "*.json");
   public static final FILE_FILTER_ZIP:FileFilter = new FileFilter("ZIP Archive (.zip)", "*.zip");
   public static final FILE_FILTER_PNG:FileFilter = new FileFilter("PNG Image (.png)", "*.png");
@@ -28,6 +29,11 @@ class FileUtil
     {
       extension: 'vortexc',
       label: 'Funkin Vortex Chart',
+    };
+  public static final FILE_EXTENSION_INFO_SM:FileDialogExtensionInfo =
+    {
+      extension: 'sm',
+      label: 'Stepmania Chart',
     };
   public static final FILE_EXTENSION_INFO_FNFC:FileDialogExtensionInfo =
     {

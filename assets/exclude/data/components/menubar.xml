@@ -8,7 +8,7 @@
 		<menu-item id="importFNFCMenu" text="Import FNFC..."/>
 		<menu-item id="exportFNFCMenu" text="Export FNFC..."/>
 		<menu-separator/>
-		<menu-item id="importStepmaniaMenu" text="Import Stepmania..." disabled="true"/>
+		<menu-item id="importStepmaniaMenu" text="Import Stepmania..."/>
 		<menu-item id="exportStepmaniaMenu" text="Export Stepmania..."/>
 		<menu-separator/>
 		<menu-item id="loadInstMenu" text="Load Instrumental..."/>
