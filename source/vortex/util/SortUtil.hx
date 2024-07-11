@@ -4,6 +4,8 @@ import vortex.data.song.SongData.SongNoteData;
 import vortex.data.song.SongData.SongEventData;
 import vortex.data.song.SongData.ChartKey;
 import vortex.data.song.SongData.SongChart;
+import vortex.data.song.SongData.SongStop;
+import vortex.data.song.SongData.SongTimeChange;
 import vortex.data.song.Gamemode;
 import flixel.util.FlxSort;
 
@@ -15,6 +17,12 @@ class SortUtil {
     return FlxSort.byValues(order, a.rowTime, b.rowTime);
   }
   public static function eventDataByTime(order: Int, a:SongEventData, b:SongEventData): Int {
+    return FlxSort.byValues(order, a.rowTime, b.rowTime);
+  }
+  public static function stopByTime(order: Int, a:SongStop, b:SongStop): Int {
+    return FlxSort.byValues(order, a.rowTime, b.rowTime);
+  }
+  public static function timeChangeByTime(order: Int, a:SongTimeChange, b:SongTimeChange):Int {
     return FlxSort.byValues(order, a.rowTime, b.rowTime);
   }
 

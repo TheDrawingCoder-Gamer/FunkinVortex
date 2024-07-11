@@ -44,6 +44,8 @@ import openfl.media.Sound;
 import vortex.data.song.SongData;
 import vortex.data.song.SongData.SongCharts;
 import vortex.data.song.SongData.SongNoteData;
+import vortex.data.song.SongData.SongStop;
+import vortex.data.song.SongData.SongTimeChange;
 import vortex.data.song.SongData.SongEventData;
 import vortex.data.song.SongData.ChartKey;
 import lime.ui.FileDialogType;
@@ -132,6 +134,7 @@ class PlayState extends UIState{
 	var curRenderedSus:FlxTypedSpriteGroup<SusNote>;
 	var curRenderedSelects:FlxTypedSpriteGroup<SelectionSquare>;
 	var curRenderedTempos:FlxTypedSpriteGroup<ChartTooltip>;
+	var curRenderedStops:FlxTypedSpriteGroup<ChartTooltip>;
 
 	var snaptext:FlxText;
 	var curSnap:Float = 0;
@@ -166,6 +169,7 @@ class PlayState extends UIState{
 	public var notePreviewDirty: Bool = false;
 	public var quantizationDirty: Bool = false;
 	public var chartDirty: Bool = false;
+	public var tooltipsDirty: Bool = false;
 	public var saveDataDirty: Bool = false;
 	public var commandHistoryDirty: Bool = false;
 	var justAdded: Bool = false;
@@ -179,6 +183,7 @@ class PlayState extends UIState{
 	var newChartToolbox:toolboxes.NewChartToolbox;
 	var chartsToolbox:toolboxes.ChartsToolbox;
 	var offsetsToolbox:toolboxes.OffsetsToolbox;
+	var tempoToolbox:toolboxes.TempoToolbox; 
 
 	override public function create()
 	{
@@ -188,6 +193,7 @@ class PlayState extends UIState{
 		curRenderedSus = new FlxTypedSpriteGroup<SusNote>();
 		curRenderedSelects = new FlxTypedSpriteGroup<SelectionSquare>();
 		curRenderedTempos = new FlxTypedSpriteGroup<ChartTooltip>();
+		curRenderedStops = new FlxTypedSpriteGroup<ChartTooltip>();
 		// TODO: Camera scrolling
 		staffLineGroup = new FlxTypedSpriteGroup<Line>();
 		staffLineGroup.setPosition(0, 0);
@@ -198,10 +204,12 @@ class PlayState extends UIState{
 		newChartToolbox = new toolboxes.NewChartToolbox(this);
 		chartsToolbox = new toolboxes.ChartsToolbox(this);
 		offsetsToolbox = new toolboxes.OffsetsToolbox(this);
+		tempoToolbox = new toolboxes.TempoToolbox(this);
 		buildFileMenu();
 		buildEditMenu();
 		buildChartMenu();
 		buildWindowMenu();
+		buildTempoMenu();
 		//staffLines.screenCenter(X);
 		staffLineGroup.screenCenter(X);
 		chart = new FlxSpriteGroup();
@@ -212,6 +220,7 @@ class PlayState extends UIState{
 		chart.add(curRenderedNotes);
 		chart.add(curRenderedSelects);
 		chart.add(curRenderedTempos);
+		chart.add(curRenderedStops);
 		#if !electron
 		FlxG.mouse.useSystemCursor = true;
 		#end
@@ -354,8 +363,10 @@ class PlayState extends UIState{
 		metadataToolbox.refresh();
 		chartsToolbox.refresh();
 		offsetsToolbox.refresh();
+		tempoToolbox.refresh();
 		noteDisplayDirty = true;
 		chartDirty = true;
+		tooltipsDirty = true;
 		saveDataDirty = false;
 	}
 	private function toVortexC(): VortexC {
@@ -530,6 +541,15 @@ class PlayState extends UIState{
 				offsetsToolbox.showDialog(false);
 			} else {
 				offsetsToolbox.hideDialog(DialogButton.CANCEL);
+			}
+		};
+	}
+	private function buildTempoMenu():Void {
+		toggleToolboxTempo.onChange = function(event:UIEvent) {
+			if (event.target.value) {
+				tempoToolbox.showDialog(false);
+			} else {
+				tempoToolbox.hideDialog(DialogButton.CANCEL);
 			}
 		};
 	}
@@ -770,7 +790,7 @@ class PlayState extends UIState{
 		handleEditKeybinds();
 		handleChartKeybinds();
 
-		if (currentGamemode != null && FocusManager.instance.focus == null) {
+		if (currentGamemode != null && !haxeUIDialogOpen) {
 			for (i in 0...noteControls.length)
 			{
 
@@ -807,6 +827,7 @@ class PlayState extends UIState{
 			}
 		}
 		handleChart();
+		handleChartTooltips();
 		handleNotes();
 		handleQuantization();
 		camFollow.setPosition(FlxG.width / 2, strumLine.y + FlxG.height * 1 / 4);
@@ -830,6 +851,7 @@ class PlayState extends UIState{
 		updateNotes();
 		Conductor.instance.update(Conductor.instance.getRowTimeInMs(strumRow));
 		updateMeasure();
+		tempoToolbox.refresh();
 	}
 
 
@@ -1097,21 +1119,65 @@ class PlayState extends UIState{
 		}
 
 		drawChartLines();
-		updateTempoTooltips();
 	}
-	private function updateTempoTooltips(): Void {
+	private function handleChartTooltips(): Void {
+		if (!tooltipsDirty) return;
+
+		tooltipsDirty = false;
+
 		if (songData == null) return;
 		for (tooltip in curRenderedTempos) {
 			tooltip.kill();
-		}	
+		}
+		for (tooltip in curRenderedStops) {
+			tooltip.kill();
+		}
 		for (timeChange in songData.timeChanges) {
-			final tip = curRenderedTempos.recycle(ChartTooltip);
+			final tip = curRenderedTempos.recycle(() -> new ChartTooltip());
 			tip.backdrop.flipX = true;
 			tip.backdrop.color = FlxColor.RED;
 			tip.text.text = Std.string(timeChange.bpm);
 			tip.x = strumLine.x + strumLine.width; 
 			tip.y = getYFromRow(timeChange.rowTime);
 		}
+		for (stop in songData.stops) {
+			final tip = curRenderedStops.recycle(ChartTooltip);
+			tip.backdrop.flipX = false;
+			tip.backdrop.color = FlxColor.YELLOW;
+			tip.text.text = Std.string(stop.length);
+			tip.x = strumLine.x - tip.backdrop.width;
+			tip.y = getYFromRow(stop.rowTime);
+		}
+	}
+	public function setStopAt(row: Int, length: Float): Void {
+		if (songData == null) return;
+		performCommand(new commands.SetStopLengthCommand(row, length));
+	}
+	public function setBPMAt(row: Int, bpm: Float): Void {
+		if (songData == null) return;
+		performCommand(new commands.SetBPMCommand(row, bpm));
+	}
+	public function timeChangeAt(row: Int): Null<SongTimeChange> {
+		if (songData == null) return null;
+		var res: SongTimeChange = null;
+		for (item in songData.timeChanges) {
+			if (item.rowTime <= row) {
+				res = item;
+			} else {
+				break;
+			}
+		}
+		return res;
+	
+	}
+	// a stop at PRECISELY a row
+	public function stopAt(row: Int): Null<SongStop> {
+		if (songData == null) return null;
+		for (item in songData.stops) {
+			if (item.rowTime == row)
+				return item;
+		}
+		return null;
 	}
 	public function updateNotes(): Void {
 		noteDisplayDirty = true;
@@ -1234,7 +1300,7 @@ class PlayState extends UIState{
 		return Math.round((yPos / LINE_SPACING) * Constants.ROWS_PER_STEP);
 	}
 	private function getYFromRow(row: Int): Float {
-		return LINE_SPACING * row * Constants.ROWS_PER_STEP;
+		return LINE_SPACING * (row / Constants.ROWS_PER_STEP);
 	}
 
 	// AUDIO

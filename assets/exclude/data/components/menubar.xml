@@ -41,7 +41,7 @@
 		</menu>
 	<menu text="Tempo">
 		<menu-checkbox id="toggleToolboxSync" text="Adjust Sync" disabled="true"/>
-		<menu-checkbox id="toggleToolboxTempo" text="Adjust Tempo" disabled="true"/>
+		<menu-checkbox id="toggleToolboxTempo" text="Adjust Tempo"/>
 		<menu-checkbox id="toggleToolboxTempoAdvanced" text="Adjust Tempo (advanced)" disabled="true"/>
 	</menu>
 </menubar>

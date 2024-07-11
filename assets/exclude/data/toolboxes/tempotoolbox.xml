@@ -1,0 +1,8 @@
+<collapsible-dialog id="toolboxTempo" title="Adjust Tempo" width="345" height="350">
+	<grid columns="2">
+		<label text="BPM"/>
+		<number-stepper id="inputBPM" pos="100" step="0.5" min="0" precision="40" tooltip="BPM at the position of the strum line"/>
+		<label text="Stop"/>
+		<number-stepper id="inputStop" pos="0" step="0.001" min="0" tooltip="Stop at the position of the strum line"/>
+	</grid>
+</collapsible-dialog>

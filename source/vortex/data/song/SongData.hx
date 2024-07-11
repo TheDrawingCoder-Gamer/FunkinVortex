@@ -249,6 +249,15 @@ class SongTimeChange implements ICloneable<SongTimeChange>
     return 'SongTimeChange(${this.rowTime} rows,${this.bpm}bpm)';
   }
 
+  // TODO: tuplets
+  public function equals(that:SongTimeChange): Bool {
+    return this.rowTime == that.rowTime && this.sameTimingAs(that);
+  }
+
+  public function sameTimingAs(that:SongTimeChange): Bool {
+    return this.bpm == that.bpm && this.timeSignatureNum == that.timeSignatureNum && this.timeSignatureDen == that.timeSignatureDen;
+  }
+
   public static function fromVSlice(conductor: LegacyConductor, vslice: VSliceTimeChange): SongTimeChange {
     final rowTime = conductor.getTimeInRows(vslice.timeStamp);
     return new SongTimeChange(rowTime, vslice.bpm, vslice.timeSignatureNum, vslice.timeSignatureDen, vslice.beatTuplets);
